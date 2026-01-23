@@ -1,0 +1,12 @@
+server:
+  port: 6003
+
+spring:
+  profiles:
+    active: @profile.active@
+  application:
+    name: mes-service1
+  cloud:
+    # 完全移除 Nacos 配置
+# 和环境有关的配置信息，不同环境覆盖此处的配置（这个是本地环境）
+# 移除所有 Nacos 相关配置

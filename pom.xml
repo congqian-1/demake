@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.tongzhou.mes</groupId>
+    <artifactId>mes</artifactId>
+    <version>${revision}</version>
+    <packaging>pom</packaging>
+
+    <properties>
+        <revision>1.0.0-SNAPSHOT</revision>
+    </properties>
+
+    <modules>
+        <module>mes-parent</module>
+        <module>mes-admin-bff</module>
+        <module>mes-openapi</module>
+        <module>mes-gateway</module>
+        <module>mes-thirdparty</module>
+        <module>mes-basic</module>
+        <module>mes-service1</module>
+        <module>mes-api</module>
+    </modules>
+
+</project>
