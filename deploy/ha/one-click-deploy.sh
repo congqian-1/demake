@@ -33,7 +33,7 @@ SYSTEMD_DIR="/etc/systemd/system"
 LOGROTATE_DIR="/etc/logrotate.d"
 
 SERVER_PORT="8080"
-JVM_OPTS="-Xms2g -Xmx4g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${LOG_DIR}"
+JVM_OPTS="-Xms4g -Xmx8g -XX:+UseG1GC -XX:MaxGCPauseMillis=200 -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=${LOG_DIR}"
 HEALTH_URL="http://127.0.0.1:${SERVER_PORT}/actuator/health"
 
 # Alert email settings (built-in as you requested)
