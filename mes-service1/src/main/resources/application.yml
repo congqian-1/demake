@@ -19,16 +19,44 @@ spring:
           jwk-set-uri: http://127.0.0.1:8080/oauth2/jwks
   cloud:
     # 移除 Nacos 配置
+  # 邮件服务配置 (T006)
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: 243219169@qq.com
+    password: bogvcxnhfqiwbhda
+    # 从环境变量读取授权码
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+        debug: false
 macula:
   security:
     ignore-urls:
       - /api/v1/echo/**
+      - /api/v1/third-party/**  # 第三方MES批次推送接口（内网访问）
+      - /api/v1/production/**   # 产线查询接口（内网访问）
 
 mybatis-plus:
   type-handlers-package: dev.macula.boot.starter.mp.handler
+  # MyBatis-Plus 逻辑删除配置 (T006)
+  global-config:
+    db-config:
+      logic-delete-field: isDeleted  # 逻辑删除字段名
+      logic-delete-value: 1          # 删除后的值
+      logic-not-delete-value: 0      # 未删除的值
   #configuration:
   # 这个配置会将执行的sql打印出来，在开发或测试的时候可以用
   #  log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+# 第三方MES系统配置 (T006)
+mes:
+  third-party:
+    base-url: ${MES_THIRD_PARTY_BASE_URL:http://third-party-mes-api:8080/api}  # 第三方MES系统地址
 
 feign:
   httpclient:
