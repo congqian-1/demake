@@ -32,6 +32,47 @@ sudo apt-get install -y openjdk-8-jdk
 sudo yum install -y java-1.8.0-openjdk-devel
 ```
 
+如需在 Linux 上安装 MySQL（按发行版二选一）：
+
+Ubuntu/Debian：
+```bash
+sudo apt-get update -y
+sudo apt-get install -y mysql-server
+sudo systemctl enable --now mysql
+```
+
+CentOS/RHEL（8/9）：
+```bash
+sudo dnf install -y mysql-server
+sudo systemctl enable --now mysqld
+```
+
+CentOS 7.9（MySQL 5.7 官方仓库）：
+```bash
+sudo yum install -y https://repo.mysql.com/mysql57-community-release-el7-11.noarch.rpm
+sudo yum install -y mysql-community-server
+sudo systemctl enable --now mysqld
+```
+
+初始化 root 密码与建库（CentOS 7.9）：
+```bash
+# 1) 查看初始 root 密码
+sudo grep 'temporary password' /var/log/mysqld.log
+
+# 2) 登录并修改 root 密码
+mysql -uroot -p
+
+# 进入 MySQL 后执行：
+ALTER USER 'root'@'localhost' IDENTIFIED BY '你的新密码';
+FLUSH PRIVILEGES;
+
+# 3) （可选）创建数据库和用户
+CREATE DATABASE mes DEFAULT CHARACTER SET utf8mb4;
+CREATE USER 'mes'@'%' IDENTIFIED BY 'mes_password';
+GRANT ALL PRIVILEGES ON mes.* TO 'mes'@'%';
+FLUSH PRIVILEGES;
+```
+
 ## 2. 打包 Jar（在你的机器或CI执行）
 ```bash
 mvn -pl mes-service1 -DskipTests package
