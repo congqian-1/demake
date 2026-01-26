@@ -4,7 +4,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://127.0.0.1:3306/mes?zeroDateTimeBehavior=convertToNull&useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&autoReconnect=true
     username: root
-    password: test123456
+    password: 'RCh;w/1y,i<h'
   # redis:
   #   database: 0
   #   host: 127.0.0.1
@@ -56,7 +56,7 @@ mybatis-plus:
 # 第三方MES系统配置 (T006)
 mes:
   third-party:
-    base-url: ${MES_THIRD_PARTY_BASE_URL:http://third-party-mes-api:8080/api}  # 第三方MES系统地址
+    base-url: ${MES_THIRD_PARTY_BASE_URL:http://10.30.70.4:8088/infc/any/getPrepackageInfo}  # 第三方MES接口地址
 
 feign:
   httpclient:

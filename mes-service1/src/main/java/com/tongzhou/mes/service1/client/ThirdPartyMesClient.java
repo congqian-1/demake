@@ -67,11 +67,29 @@ public class ThirdPartyMesClient {
             backoff = @Backoff(delay = 2000, multiplier = 2)
     )
     public PrepackageDataDTO getPrepackageInfo(String batchNum, String workId) throws IOException {
-        String url = baseUrl + "/prepackage/batch/" + batchNum + "/work-order/" + workId;
-        
+        String url = baseUrl;
+
+        java.util.Map<String, Object> serviceMap = new java.util.LinkedHashMap<>();
+        serviceMap.put("name", "getPrepackageInfo");
+
+        java.util.Map<String, Object> payloadMap = new java.util.LinkedHashMap<>();
+        payloadMap.put("batchNum", batchNum);
+        payloadMap.put("workId", workId);
+
+        java.util.Map<String, Object> requestBodyMap = new java.util.LinkedHashMap<>();
+        requestBodyMap.put("service", serviceMap);
+        requestBodyMap.put("payload", payloadMap);
+
+        String requestBody = objectMapper.writeValueAsString(requestBodyMap);
+
+        okhttp3.RequestBody body = okhttp3.RequestBody.create(
+                requestBody,
+                okhttp3.MediaType.parse("application/json")
+        );
+
         Request request = new Request.Builder()
                 .url(url)
-                .get()
+                .post(body)
                 .addHeader("Content-Type", "application/json")
                 .build();
 
