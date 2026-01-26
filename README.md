@@ -59,10 +59,10 @@ sudo systemctl enable --now mysqld
 # 1) 查看初始 root 密码
 sudo grep 'temporary password' /var/log/mysqld.log
 
-# 2) 登录并修改 root 密码
-mysql -uroot -p
+# 2) 登录并修改 root 密码（临时密码默认过期，需加参数）
+mysql --connect-expired-password -uroot -p
 
-# 进入 MySQL 后执行：
+# 进入 MySQL 后执行（可把临时密码设为永久密码）：
 ALTER USER 'root'@'localhost' IDENTIFIED BY '你的新密码';
 FLUSH PRIVILEGES;
 
@@ -72,6 +72,18 @@ CREATE USER 'mes'@'%' IDENTIFIED BY 'mes_password';
 GRANT ALL PRIVILEGES ON mes.* TO 'mes'@'%';
 FLUSH PRIVILEGES;
 ```
+
+导入初始化表结构：
+```bash
+# 先确保数据库已创建
+mysql -uroot -p -e "CREATE DATABASE IF NOT EXISTS mes DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+
+# 初始化表结构（SQL 文件路径见下）
+mysql -uroot -p -D mes < /opt/mes-release/init-mes.sql
+```
+
+初始化 SQL 文件：
+- `deploy/init-mes.sql`
 
 ## 2. 打包 Jar（在你的机器或CI执行）
 ```bash
