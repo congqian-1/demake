@@ -83,7 +83,7 @@ mysql -uroot -p -D mes < /opt/mes-release/init-mes.sql
 ```
 
 初始化 SQL 文件：
-- `deploy/init-mes.sql`
+- `deploy/ha/init-mes.sql`
 
 ## 2. 打包 Jar（在你的机器或CI执行）
 ```bash
@@ -97,7 +97,7 @@ mvn -pl mes-service1 -DskipTests package
 
 ```text
 /opt/mes-release/
-  mes-service1.jar
+  mes-service1-1.0.0-SNAPSHOT.jar
   one-click-deploy.sh
   upgrade.sh
 ```
@@ -114,7 +114,7 @@ ls
 在发布目录执行：
 ```bash
 cd /opt/mes-release
-sudo bash one-click-deploy.sh ./mes-service1.jar
+sudo bash one-click-deploy.sh ./mes-service1-1.0.0-SNAPSHOT.jar
 ```
 
 部署完成后会自动：
@@ -124,10 +124,10 @@ sudo bash one-click-deploy.sh ./mes-service1.jar
 - 日志按天/按大小切割并保留 30 天
 
 ## 5. 一键升级（后续只换 Jar）
-把新版本 Jar 覆盖 `mes-service1.jar`，然后执行：
+把新版本 Jar 覆盖 `mes-service1-1.0.0-SNAPSHOT.jar`，然后执行：
 ```bash
 cd /opt/mes-release
-sudo bash upgrade.sh ./mes-service1.jar
+sudo bash upgrade.sh ./mes-service1-1.0.0-SNAPSHOT.jar
 ```
 
 升级脚本会自动：
