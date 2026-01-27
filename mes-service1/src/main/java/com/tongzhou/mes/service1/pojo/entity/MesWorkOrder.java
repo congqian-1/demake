@@ -63,9 +63,59 @@ public class MesWorkOrder {
     private String route;
 
     /**
+     * 线路ID
+     */
+    private String routeId;
+
+    /**
      * 订单类型
      */
     private String orderType;
+
+    /**
+     * 交付日期
+     */
+    private LocalDateTime deliveryTime;
+
+    /**
+     * 开料/排样时间
+     */
+    private LocalDateTime nestingTime;
+
+    /**
+     * 线路/区域信息
+     */
+    private String ymba014;
+
+    /**
+     * 工位/区域信息
+     */
+    private String ymba015;
+
+    /**
+     * 属性标识
+     */
+    private String ymba016;
+
+    /**
+     * 部件字段
+     */
+    private String part0;
+
+    /**
+     * 条件字段
+     */
+    private String condition0;
+
+    /**
+     * 部件时间字段
+     */
+    private LocalDateTime partTime0;
+
+    /**
+     * 组/套标记
+     */
+    private Integer zuz;
 
     /**
      * 预包装数据拉取状态（NOT_PULLED=未拉取/PULLING=拉取中/PULLED=已拉取/FAILED=拉取失败/NO_DATA=无预包装数据/UPDATING=更新中）

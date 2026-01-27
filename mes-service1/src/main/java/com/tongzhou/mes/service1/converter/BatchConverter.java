@@ -23,6 +23,11 @@ import com.tongzhou.mes.service1.pojo.entity.MesOptimizationFile;
 import com.tongzhou.mes.service1.pojo.entity.MesWorkOrder;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+
 /**
  * 批次数据转换器
  */
@@ -39,9 +44,12 @@ public class BatchConverter {
 
         MesBatch batch = new MesBatch();
         batch.setBatchNum(request.getBatchNum());
-        batch.setBatchType(request.getBatchType());
-        batch.setProductTime(request.getProductTime());
+        batch.setBatchType(parseInteger(request.getBatchType()));
+        batch.setProductTime(parseDateTime(request.getProductTime()));
+        batch.setNestingTime(parseDateTime(request.getNestingTime()));
         batch.setSimpleBatchNum(request.getSimpleBatchNum());
+        batch.setYmba014(request.getYmba014());
+        batch.setYmba016(request.getYmba016());
         
         return batch;
     }
@@ -58,7 +66,7 @@ public class BatchConverter {
         file.setBatchId(batchId);
         file.setBatchNum(batchNum);
         file.setOptimizingFileName(fileInfo.getOptimizingFileName());
-        file.setStationCode(fileInfo.getStationCode());
+        file.setStationCode(defaultIfBlank(fileInfo.getStationCode(), "UNKNOWN"));
         file.setUrgency(fileInfo.getUrgency() != null ? fileInfo.getUrgency() : 0);
         
         return file;
@@ -77,11 +85,80 @@ public class BatchConverter {
         workOrder.setOptimizingFileId(optimizingFileId);
         workOrder.setBatchNum(batchNum);
         workOrder.setWorkId(orderInfo.getWorkId());
-        workOrder.setRoute(orderInfo.getRoute());
-        workOrder.setOrderType(orderInfo.getOrderType());
+        workOrder.setRoute(defaultIfBlank(orderInfo.getRoute(), "/"));
+        workOrder.setRouteId(orderInfo.getRouteId());
+        workOrder.setOrderType(defaultIfBlank(orderInfo.getOrderType(), "UNKNOWN"));
+        workOrder.setDeliveryTime(parseDateTime(orderInfo.getDeliveryTime()));
+        workOrder.setNestingTime(parseDateTime(orderInfo.getNestingTime()));
+        workOrder.setYmba014(orderInfo.getYmba014());
+        workOrder.setYmba015(orderInfo.getYmba015());
+        workOrder.setYmba016(orderInfo.getYmba016());
+        workOrder.setPart0(normalizeNullString(orderInfo.getPart0()));
+        workOrder.setCondition0(normalizeNullString(orderInfo.getCondition0()));
+        workOrder.setPartTime0(parseDateTime(orderInfo.getPartTime0()));
+        workOrder.setZuz(orderInfo.getZuz());
         workOrder.setPrepackageStatus("NOT_PULLED");
         workOrder.setRetryCount(0);
         
         return workOrder;
+    }
+
+    private Integer parseInteger(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Integer.parseInt(value.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private LocalDateTime parseDateTime(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty() || "NULL".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+
+        DateTimeFormatter[] formatters = new DateTimeFormatter[] {
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.S"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+                DateTimeFormatter.ofPattern("yyyy-MM-dd")
+        };
+
+        for (int i = 0; i < formatters.length; i++) {
+            DateTimeFormatter formatter = formatters[i];
+            try {
+                if (i == 2) {
+                    LocalDate date = LocalDate.parse(trimmed, formatter);
+                    return date.atStartOfDay();
+                }
+                return LocalDateTime.parse(trimmed, formatter);
+            } catch (DateTimeParseException ignored) {
+            }
+        }
+        return null;
+    }
+
+    private String normalizeNullString(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty() || "NULL".equalsIgnoreCase(trimmed)) {
+            return null;
+        }
+        return trimmed;
+    }
+
+    private String defaultIfBlank(String value, String fallback) {
+        if (value == null) {
+            return fallback;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? fallback : trimmed;
     }
 }

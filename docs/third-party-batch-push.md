@@ -15,47 +15,72 @@
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | batchNum | string | 是 | 批次号（唯一） |
-| batchType | int | 是 | 批次类型（1=衣柜柜体/2=橱柜柜体/3=衣柜门板/4=橱柜门板/5=合并条码/6=补板） |
-| productTime | string | 是 | 生产日期（格式：`YYYY-MM-DD`） |
+| batchType | string | 是 | 批次类型（1=衣柜柜体/2=橱柜柜体/3=衣柜门板/4=橱柜门板/5=合并条码/6=补板） |
+| productTime | string | 是 | 生产日期（格式：`YYYY-MM-DD` 或 `YYYY-MM-DD HH:mm:ss.S`） |
 | simpleBatchNum | string | 否 | 简易批次号 |
-| optimizingFiles | array | 是 | 优化文件列表 |
+| NestingTime | string | 否 | 开料/排样时间 |
+| ymba014 | string | 否 | 线路/区域信息 |
+| ymba016 | string | 否 | 属性标识 |
+| optimizingFileList | array | 是 | 优化文件列表 |
 
-### optimizingFiles[] 字段
+### optimizingFileList[] 字段
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | optimizingFileName | string | 是 | 优化文件名称 |
-| stationCode | string | 是 | 工位编码（C1A001/C1A002/CMA001/CMA002/YMA001/YMA002） |
+| station | string | 是 | 工位编码（C1A001/C1A002/CMA001/CMA002/YMA001/YMA002） |
 | urgency | int | 否 | 是否加急（0=不加急/1=加急） |
-| workOrders | array | 是 | 工单列表 |
+| workOrderList | array | 是 | 工单列表 |
 
-### workOrders[] 字段
+### workOrderList[] 字段
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | workId | string | 是 | 工单号 |
-| route | string | 是 | 线路 |
-| orderType | string | 是 | 订单类型 |
+| route | string | 否 | 线路 |
+| routeid | string | 否 | 线路ID |
+| orderType | string | 否 | 订单类型 |
+| DeliveryTime | string | 否 | 交付日期 |
+| NestingTime | string | 否 | 开料/排样时间 |
+| ymba014 | string | 否 | 线路/区域信息 |
+| ymba015 | string | 否 | 工位/区域信息 |
+| ymba016 | string | 否 | 属性标识 |
+| part0 | string | 否 | 部件字段 |
+| condition0 | string | 否 | 条件字段 |
+| partTime0 | string | 否 | 部件时间字段 |
+| zuz | int | 否 | 组/套标记 |
 
 ## 4. 请求示例
 ```json
 {
-  "batchNum": "PCJH-260125-0002",
-  "batchType": 1,
-  "productTime": "2026-01-26",
-  "simpleBatchNum": "PCJH-260125-0002",
-  "optimizingFiles": [
+  "simpleBatchNum": "C2GT26012706-20",
+  "NestingTime": "2026-03-23",
+  "ymba014": "云南线",
+  "ymba016": "N",
+  "optimizingFileList": [
     {
-      "optimizingFileName": "OPT-PCJH-260125-0002.txt",
-      "stationCode": "C1A001",
-      "urgency": 0,
-      "workOrders": [
+      "optimizingFileName": "C2GT26012706-20-Y015-1",
+      "urgency": 1,
+      "station": "CMA002",
+      "workOrderList": [
         {
-          "workId": "DDN000070531BCP006",
-          "route": "LINE-A",
-          "orderType": "STANDARD"
+          "orderType": "N04",
+          "ymba014": "四川双流线",
+          "part0": "NULL",
+          "ymba016": "N",
+          "workId": "WD000642973IBCP132",
+          "DeliveryTime": "2026-02-02",
+          "condition0": "NULL",
+          "NestingTime": "2026-01-31",
+          "route": "/",
+          "routeid": "",
+          "partTime0": "NULL",
+          "zuz": 0
         }
       ]
     }
-  ]
+  ],
+  "batchNum": "PCJH-260125-0105",
+  "productTime": "2026-01-27 00:00:00.0",
+  "batchType": "1"
 }
 ```
 

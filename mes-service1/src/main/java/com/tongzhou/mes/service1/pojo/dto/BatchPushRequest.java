@@ -17,14 +17,13 @@
 
 package com.tongzhou.mes.service1.pojo.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
-import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -40,20 +39,30 @@ public class BatchPushRequest {
     @Schema(description = "批次号", required = true, example = "BATCH-20240125-001")
     private String batchNum;
 
-    @NotNull(message = "批次类型不能为空")
+    @NotBlank(message = "批次类型不能为空")
     @Schema(description = "批次类型（1=衣柜柜体/2=橱柜柜体/3=衣柜门板/4=橱柜门板/5=合并条码/6=补板）", required = true, example = "1")
-    private Integer batchType;
+    private String batchType;
 
-    @NotNull(message = "生产日期不能为空")
     @Schema(description = "生产日期", required = true)
-    private LocalDate productTime;
+    private String productTime;
 
     @Schema(description = "简易批次号")
     private String simpleBatchNum;
 
+    @Schema(description = "开料/排样时间")
+    @JsonAlias("NestingTime")
+    private String nestingTime;
+
+    @Schema(description = "线路/区域信息")
+    private String ymba014;
+
+    @Schema(description = "属性标识")
+    private String ymba016;
+
     @Valid
     @NotEmpty(message = "优化文件列表不能为空")
     @Schema(description = "优化文件列表", required = true)
+    @JsonAlias("optimizingFileList")
     private List<OptimizingFileInfo> optimizingFiles;
 
     /**
@@ -67,8 +76,8 @@ public class BatchPushRequest {
         @Schema(description = "优化文件名称", required = true, example = "OPT-20240125-001.txt")
         private String optimizingFileName;
 
-        @NotBlank(message = "工位编码不能为空")
-        @Schema(description = "工位编码（C1A001/C1A002/CMA001/CMA002/YMA001/YMA002）", required = true, example = "C1A001")
+        @Schema(description = "工位编码（C1A001/C1A002/CMA001/CMA002/YMA001/YMA002）", example = "C1A001")
+        @JsonAlias("station")
         private String stationCode;
 
         @Schema(description = "是否加急（0=不加急/1=加急）", example = "0")
@@ -77,6 +86,7 @@ public class BatchPushRequest {
         @Valid
         @NotEmpty(message = "工单列表不能为空")
         @Schema(description = "工单列表", required = true)
+        @JsonAlias("workOrderList")
         private List<WorkOrderInfo> workOrders;
     }
 
@@ -91,12 +101,43 @@ public class BatchPushRequest {
         @Schema(description = "工单号", required = true, example = "WO-20240125-001")
         private String workId;
 
-        @NotBlank(message = "线路不能为空")
-        @Schema(description = "线路", required = true, example = "LINE-A")
+        @Schema(description = "线路", example = "/")
         private String route;
 
-        @NotBlank(message = "订单类型不能为空")
-        @Schema(description = "订单类型", required = true, example = "STANDARD")
+        @Schema(description = "线路ID")
+        @JsonAlias("routeid")
+        private String routeId;
+
+        @Schema(description = "订单类型", example = "N04")
         private String orderType;
+
+        @Schema(description = "交付日期")
+        @JsonAlias("DeliveryTime")
+        private String deliveryTime;
+
+        @Schema(description = "开料/排样时间")
+        @JsonAlias("NestingTime")
+        private String nestingTime;
+
+        @Schema(description = "线路/区域信息")
+        private String ymba014;
+
+        @Schema(description = "工位/区域信息")
+        private String ymba015;
+
+        @Schema(description = "属性标识")
+        private String ymba016;
+
+        @Schema(description = "部件字段")
+        private String part0;
+
+        @Schema(description = "条件字段")
+        private String condition0;
+
+        @Schema(description = "部件时间字段")
+        private String partTime0;
+
+        @Schema(description = "组/套标记")
+        private Integer zuz;
     }
 }

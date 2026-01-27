@@ -85,6 +85,11 @@ mysql -uroot -p -D mes < /opt/mes-release/init-mes.sql
 初始化 SQL 文件：
 - `deploy/ha/init-mes.sql`
 
+如果已有旧表结构，需要执行迁移：
+```bash
+mysql -uroot -p -D mes < /opt/mes-release/migrate-20260127-third-party.sql
+```
+
 ## 2. 打包 Jar（在你的机器或CI执行）
 ```bash
 mvn -pl mes-service1 -DskipTests package
@@ -173,11 +178,65 @@ sudo systemctl enable mes-service1
 sudo journalctl -u mes-service1 -n 200 --no-pager
 ```
 
+## 8. 服务崩溃/频繁重启排查
+如果怀疑服务崩溃或频繁重启，请按顺序排查：
+
+1. 查看服务状态与最近退出原因：
+```bash
+systemctl status mes-service1 --no-pager
+```
+
+2. 查看服务自身日志（判断是否 OOM、端口占用、配置错误）：
+```bash
+journalctl -u mes-service1 -n 300 --no-pager
+```
+
+3. 查看健康检查日志（健康检查每分钟执行一次，失败会告警并尝试重启）：
+```bash
+journalctl -u mes-service1-healthcheck -n 200 --no-pager
+journalctl -u mes-service1-healthcheck.timer -n 200 --no-pager
+```
+
+4. 查看告警邮件发送日志：
+```bash
+# 使用 Postfix 时
+sudo tail -n 200 /var/log/maillog
+
+# 使用 msmtp 时（如果已安装）
+sudo tail -n 200 /var/log/msmtp.log
+```
+
+按日期过滤健康检查日志（示例：2026-01-26）：
+```bash
+journalctl -u mes-service1-healthcheck --since "2026-01-26 00:00:00" --until "2026-01-26 23:59:59" --no-pager
+```
+
+5. 检查端口是否在监听（正常应有 8080）：
+```bash
+ss -lntp | grep 8080
+```
+
+6. 快速手工验证健康接口：
+```bash
+curl -i http://127.0.0.1:8080/actuator/health
+```
+
+常见原因：
+- JVM OOM（内存不足）
+- 数据库不可用或密码错误
+- 端口被占用
+- 配置文件错误
+
+补充说明：
+- `journalctl -u <unit>` 是按 systemd unit 过滤日志；`--since/--until` 是时间范围过滤。
+
 ## 8. 关键落地位置（部署后）
 - 服务目录：`/opt/mes-service1`
 - 配置目录：`/etc/mes-service1`
 - 日志目录：`/logs/mes-service1`
 - 日志切割：`/etc/logrotate.d/mes-service1`
+- Arthas：`/opt/mes-service1/bin/arthas-boot.jar`
+- Arthas 启动脚本：`/opt/mes-service1/bin/arthas.sh`
 
 ## 9. 说明（与告警相关）
 脚本已内置告警邮箱配置：

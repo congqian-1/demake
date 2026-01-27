@@ -20,7 +20,6 @@ package com.tongzhou.mes.service1.pojo.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -51,12 +50,27 @@ public class MesBatch {
     /**
      * 生产日期
      */
-    private LocalDate productTime;
+    private LocalDateTime productTime;
+
+    /**
+     * 开料/排样时间
+     */
+    private LocalDateTime nestingTime;
 
     /**
      * 简易批次号
      */
     private String simpleBatchNum;
+
+    /**
+     * 线路/区域信息
+     */
+    private String ymba014;
+
+    /**
+     * 属性标识
+     */
+    private String ymba016;
 
     /**
      * 逻辑删除标识（0-未删除、1-已删除）

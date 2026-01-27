@@ -25,24 +25,36 @@ echo "==> Batch Push"
 curl -sS -i -X POST "${BASE_URL}/api/v1/third-party/batch/push" \
   -H "Content-Type: application/json" \
   -d "{
-    \"batchNum\": \"${BATCH_NUM}\",
-    \"batchType\": 1,
-    \"productTime\": \"$(date +%F)\",
     \"simpleBatchNum\": \"${BATCH_NUM}\",
-    \"optimizingFiles\": [
+    \"NestingTime\": \"$(date +%F)\",
+    \"ymba014\": \"云南线\",
+    \"ymba016\": \"N\",
+    \"optimizingFileList\": [
       {
         \"optimizingFileName\": \"OPT-${BATCH_NUM}.txt\",
-        \"stationCode\": \"C1A001\",
-        \"urgency\": 0,
-        \"workOrders\": [
+        \"urgency\": 1,
+        \"station\": \"CMA002\",
+        \"workOrderList\": [
           {
+            \"orderType\": \"N04\",
+            \"ymba014\": \"云南线\",
+            \"part0\": \"NULL\",
+            \"ymba016\": \"N\",
             \"workId\": \"${WORK_ID}\",
-            \"route\": \"LINE-A\",
-            \"orderType\": \"STANDARD\"
+            \"DeliveryTime\": \"$(date +%F)\",
+            \"condition0\": \"NULL\",
+            \"NestingTime\": \"$(date +%F)\",
+            \"route\": \"/\",
+            \"routeid\": \"\",
+            \"partTime0\": \"NULL\",
+            \"zuz\": 0
           }
         ]
       }
-    ]
+    ],
+    \"batchNum\": \"${BATCH_NUM}\",
+    \"productTime\": \"$(date '+%F 00:00:00.0')\",
+    \"batchType\": \"1\"
   }"
 echo ""
 

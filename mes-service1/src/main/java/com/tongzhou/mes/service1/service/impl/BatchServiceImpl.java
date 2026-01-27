@@ -82,9 +82,13 @@ public class BatchServiceImpl implements BatchService {
             log.info("已物理删除批次 {} 的旧优化文件数据，数量: {}", batchNum, deletedFiles);
 
             // 更新批次信息
-            existingBatch.setBatchType(request.getBatchType());
-            existingBatch.setProductTime(request.getProductTime());
-            existingBatch.setSimpleBatchNum(request.getSimpleBatchNum());
+            MesBatch updatedBatch = batchConverter.toMesBatch(request);
+            existingBatch.setBatchType(updatedBatch.getBatchType());
+            existingBatch.setProductTime(updatedBatch.getProductTime());
+            existingBatch.setNestingTime(updatedBatch.getNestingTime());
+            existingBatch.setSimpleBatchNum(updatedBatch.getSimpleBatchNum());
+            existingBatch.setYmba014(updatedBatch.getYmba014());
+            existingBatch.setYmba016(updatedBatch.getYmba016());
             batchMapper.updateById(existingBatch);
             log.info("已更新批次信息: {}", batchNum);
         } else {
