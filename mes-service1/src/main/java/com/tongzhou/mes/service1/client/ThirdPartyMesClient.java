@@ -18,7 +18,10 @@
 package com.tongzhou.mes.service1.client;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.tongzhou.mes.service1.converter.ThirdPartyPrepackageMapper;
 import com.tongzhou.mes.service1.pojo.dto.PrepackageDataDTO;
+import com.tongzhou.mes.service1.pojo.dto.ThirdPartyPrepackageResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -46,12 +49,15 @@ public class ThirdPartyMesClient {
     private String baseUrl;
 
     private final ObjectMapper objectMapper;
+    private final ThirdPartyPrepackageMapper prepackageMapper;
 
     private final OkHttpClient okHttpClient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .build();
+
+    private final ThreadLocal<LastCall> lastCallHolder = new ThreadLocal<>();
 
     /**
      * 拉取预包装数据（根据批次号和工单号）
@@ -82,6 +88,11 @@ public class ThirdPartyMesClient {
 
         String requestBody = objectMapper.writeValueAsString(requestBodyMap);
 
+        LastCall lastCall = new LastCall();
+        lastCall.url = url;
+        lastCall.requestBody = requestBody;
+        lastCallHolder.set(lastCall);
+
         okhttp3.RequestBody body = okhttp3.RequestBody.create(
                 requestBody,
                 okhttp3.MediaType.parse("application/json")
@@ -95,19 +106,93 @@ public class ThirdPartyMesClient {
 
         try (Response response = okHttpClient.newCall(request).execute()) {
             if (!response.isSuccessful()) {
+                lastCall.httpStatus = response.code();
+                lastCall.responseBody = response.body() != null ? response.body().string() : null;
                 log.error("Failed to pull prepackage data for batch: {}, workId: {}, status: {}", 
                         batchNum, workId, response.code());
                 throw new IOException("Unexpected response code: " + response.code());
             }
 
             String responseBody = response.body() != null ? response.body().string() : null;
+            lastCall.httpStatus = response.code();
+            lastCall.responseBody = responseBody;
             if (responseBody == null) {
                 log.error("Empty response body for batch: {}, workId: {}", batchNum, workId);
                 throw new IOException("Empty response body");
             }
 
             log.info("Successfully pulled prepackage data for batch: {}, workId: {}", batchNum, workId);
-            return objectMapper.readValue(responseBody, PrepackageDataDTO.class);
+            return parseResponse(responseBody, batchNum, workId);
+        } catch (IOException e) {
+            lastCall.errorMessage = e.getMessage();
+            throw e;
+        } catch (RuntimeException e) {
+            lastCall.errorMessage = e.getMessage();
+            throw e;
         }
+    }
+
+    private PrepackageDataDTO parseResponse(String responseBody, String batchNum, String workId) throws IOException {
+        if (responseBody == null || responseBody.trim().isEmpty()) {
+            return null;
+        }
+        JsonNode root = objectMapper.readTree(responseBody);
+        if (root.has("PrePackageInfo")) {
+            return objectMapper.treeToValue(root, PrepackageDataDTO.class);
+        }
+        ThirdPartyPrepackageResponseDTO dto = objectMapper.treeToValue(root, ThirdPartyPrepackageResponseDTO.class);
+        return prepackageMapper.toPrepackageData(dto, batchNum, workId);
+    }
+
+    public LastCallSnapshot getLastCallSnapshot() {
+        LastCall lastCall = lastCallHolder.get();
+        if (lastCall == null) {
+            return null;
+        }
+        return new LastCallSnapshot(lastCall);
+    }
+
+    public static class LastCallSnapshot {
+        private final String url;
+        private final String requestBody;
+        private final Integer httpStatus;
+        private final String responseBody;
+        private final String errorMessage;
+
+        private LastCallSnapshot(LastCall lastCall) {
+            this.url = lastCall.url;
+            this.requestBody = lastCall.requestBody;
+            this.httpStatus = lastCall.httpStatus;
+            this.responseBody = lastCall.responseBody;
+            this.errorMessage = lastCall.errorMessage;
+        }
+
+        public String getUrl() {
+            return url;
+        }
+
+        public String getRequestBody() {
+            return requestBody;
+        }
+
+        public Integer getHttpStatus() {
+            return httpStatus;
+        }
+
+        public String getResponseBody() {
+            return responseBody;
+        }
+
+        public String getErrorMessage() {
+            return errorMessage;
+        }
+    }
+
+    private static class LastCall {
+        private String url;
+        private String requestBody;
+        private Integer httpStatus;
+        private String responseBody;
+        private String errorMessage;
     }
 }

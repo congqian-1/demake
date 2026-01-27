@@ -1,0 +1,25 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:mes;MODE=MySQL;DB_CLOSE_DELAY=-1;DATABASE_TO_UPPER=false
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:sql/init-mes-h2.sql
+
+mybatis-plus:
+  global-config:
+    db-config:
+      logic-delete-field: isDeleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+logging:
+  level:
+    root: info
+
+mes:
+  third-party:
+    base-url: http://mock-third-party

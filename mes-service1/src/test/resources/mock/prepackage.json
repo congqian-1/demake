@@ -1,0 +1,113 @@
+{
+  "PrePackageInfo": {
+    "OrderNum": "ORDER-TEMPLATE",
+    "Consignor": "Mock Consignor",
+    "ContractNo": "CONTRACT-TEMPLATE",
+    "WorkNum": "WORK-TEMPLATE",
+    "Receiver": "Mock Receiver",
+    "Phone": "13800000000",
+    "ShipBatch": "SHIP-TEMPLATE",
+    "InstallAddress": "Mock Address",
+    "Customer": "Mock Customer",
+    "ReceiveRegion": "Mock Region",
+    "Space": "Mock Space",
+    "PackType": "Mock PackType",
+    "ProductType": "Mock ProductType",
+    "PrepackageInfoSize": 2,
+    "TotalSet": 1,
+    "MaxPackageNo": 2,
+    "ProductionNum": "PROD-TEMPLATE",
+    "BoxInfoDetails": [
+      {
+        "BoxCode": "BOX-TEMPLATE-1",
+        "Building": "1",
+        "House": "A",
+        "Room": "101",
+        "Setno": 1,
+        "Color": "White",
+        "PackageInfos": [
+          {
+            "PackageNo": 1,
+            "Length": 1000,
+            "Width": 500,
+            "Depth": 300,
+            "Weight": 20,
+            "PartCount": 2,
+            "BoxType": "地盖",
+            "PartInfos": [
+              {
+                "PartCode": "PART-TEMPLATE-1",
+                "Layer": 1,
+                "Piece": 1,
+                "ItemCode": "ITEM-A",
+                "ItemName": "Part A",
+                "MatName": "White",
+                "ItemLength": 100,
+                "ItemWidth": 50,
+                "ItemDepth": 18,
+                "XAxis": 1,
+                "YAxis": 2,
+                "ZAxis": 3,
+                "SortOrder": 1,
+                "StandardList": "[\"STD-A\"]"
+              },
+              {
+                "PartCode": "PART-TEMPLATE-2",
+                "Layer": 1,
+                "Piece": 2,
+                "ItemCode": "ITEM-B",
+                "ItemName": "Part B",
+                "MatName": "White",
+                "ItemLength": 110,
+                "ItemWidth": 55,
+                "ItemDepth": 18,
+                "XAxis": 4,
+                "YAxis": 5,
+                "ZAxis": 6,
+                "SortOrder": 2,
+                "StandardList": "[\"STD-B\"]"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "BoxCode": "BOX-TEMPLATE-2",
+        "Building": "1",
+        "House": "A",
+        "Room": "102",
+        "Setno": 1,
+        "Color": "Gray",
+        "PackageInfos": [
+          {
+            "PackageNo": 2,
+            "Length": 900,
+            "Width": 450,
+            "Depth": 280,
+            "Weight": 18,
+            "PartCount": 1,
+            "BoxType": "天地盖",
+            "PartInfos": [
+              {
+                "PartCode": "PART-TEMPLATE-3",
+                "Layer": 2,
+                "Piece": 1,
+                "ItemCode": "ITEM-C",
+                "ItemName": "Part C",
+                "MatName": "Gray",
+                "ItemLength": 120,
+                "ItemWidth": 60,
+                "ItemDepth": 18,
+                "XAxis": 7,
+                "YAxis": 8,
+                "ZAxis": 9,
+                "SortOrder": 3,
+                "StandardList": "[\"STD-C\"]"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

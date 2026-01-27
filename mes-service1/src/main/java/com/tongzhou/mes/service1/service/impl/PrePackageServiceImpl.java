@@ -107,12 +107,15 @@ public class PrePackageServiceImpl implements PrePackageService {
             // 带重试的拉取
             PrepackageDataDTO data = pullWithRetry(batchNum, workId);
 
-            if (data == null || data.getPrePackageInfo() == null) {
-                // 无预包装数据
+            if (data == null || data.getPrePackageInfo() == null || isEmptyPrepackage(data)) {
+                String diagnostic = buildDiagnosticMessage("NO_DATA", batchNum, workId);
                 workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
                         .set(MesWorkOrder::getPrepackageStatus, "NO_DATA")
+                        .set(MesWorkOrder::getErrorMessage, diagnostic)
+                        .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
                         .eq(MesWorkOrder::getId, workOrder.getId()));
                 log.error("工单 {} 无预包装数据", workId);
+                logThirdPartyCall(batchNum, workId, "NO_DATA");
                 return;
             }
 
@@ -135,12 +138,78 @@ public class PrePackageServiceImpl implements PrePackageService {
 
         } catch (Exception e) {
             log.error("工单预包装数据拉取失败，工单号: {}, 错误: {}", workId, e.getMessage(), e);
+            logThirdPartyCall(batchNum, workId, "EXCEPTION: " + e.getMessage());
+            String diagnostic = buildDiagnosticMessage("EXCEPTION: " + e.getMessage(), batchNum, workId);
             Integer retryCountOverride = e instanceof RetryExhaustedException
                 ? ((RetryExhaustedException) e).getRetryCount()
                 : null;
-            handlePullFailure(workOrder, e.getMessage(), retryCountOverride);
+            handlePullFailure(workOrder, diagnostic, retryCountOverride);
             throw e;
         }
+    }
+
+    private boolean isEmptyPrepackage(PrepackageDataDTO data) {
+        PrepackageDataDTO.PrePackageInfo info = data.getPrePackageInfo();
+        if (info == null || info.getBoxInfoDetails() == null || info.getBoxInfoDetails().isEmpty()) {
+            return true;
+        }
+        for (PrepackageDataDTO.BoxInfoDetail box : info.getBoxInfoDetails()) {
+            if (box.getPackageInfos() == null || box.getPackageInfos().isEmpty()) {
+                continue;
+            }
+            for (PrepackageDataDTO.PackageInfo pkg : box.getPackageInfos()) {
+                if (pkg.getPartInfos() != null && !pkg.getPartInfos().isEmpty()) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private void logThirdPartyCall(String batchNum, String workId, String reason) {
+        ThirdPartyMesClient.LastCallSnapshot snapshot = thirdPartyMesClient.getLastCallSnapshot();
+        if (snapshot == null) {
+            log.error("第三方调用记录缺失，批次号: {}, 工单号: {}, 原因: {}", batchNum, workId, reason);
+            return;
+        }
+        log.error(
+            "第三方接口调用信息，原因: {}，批次号: {}，工单号: {}，url: {}，status: {}，error: {}，request: {}，response: {}",
+            reason,
+            batchNum,
+            workId,
+            snapshot.getUrl(),
+            snapshot.getHttpStatus(),
+            snapshot.getErrorMessage(),
+            snapshot.getRequestBody(),
+            snapshot.getResponseBody()
+        );
+    }
+
+    private String buildDiagnosticMessage(String reason, String batchNum, String workId) {
+        ThirdPartyMesClient.LastCallSnapshot snapshot = thirdPartyMesClient.getLastCallSnapshot();
+        if (snapshot == null) {
+            return reason;
+        }
+        StringBuilder builder = new StringBuilder();
+        builder.append(reason).append(" | ");
+        builder.append("batchNum=").append(batchNum).append(", workId=").append(workId).append(", ");
+        builder.append("url=").append(snapshot.getUrl()).append(", ");
+        builder.append("status=").append(snapshot.getHttpStatus()).append(", ");
+        builder.append("error=").append(snapshot.getErrorMessage()).append(", ");
+        builder.append("request=").append(truncate(snapshot.getRequestBody())).append(", ");
+        builder.append("response=").append(truncate(snapshot.getResponseBody()));
+        return builder.toString();
+    }
+
+    private String truncate(String value) {
+        if (value == null) {
+            return null;
+        }
+        int max = 2000;
+        if (value.length() <= max) {
+            return value;
+        }
+        return value.substring(0, max) + "...(truncated)";
     }
 
     /**
