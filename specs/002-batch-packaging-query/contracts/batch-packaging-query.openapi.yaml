@@ -1,0 +1,221 @@
+openapi: 3.0.3
+info:
+  title: Batch & Packaging Hierarchy Query API
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/production/batches/{batchNum}/hierarchy:
+    get:
+      summary: Get full batch hierarchy
+      parameters:
+        - name: batchNum
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Batch hierarchy result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultBatchHierarchy'
+        '404':
+          description: Batch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/production/prepackage-orders/{orderNum}/hierarchy:
+    get:
+      summary: Get full prepackage hierarchy
+      parameters:
+        - name: orderNum
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: workId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional work order ID for lookup when orderNum is not available
+      responses:
+        '200':
+          description: Prepackage hierarchy result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultPrepackageHierarchy'
+        '404':
+          description: Prepackage order not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    ResultBatchHierarchy:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "0"
+        message:
+          type: string
+          example: OK
+        data:
+          $ref: '#/components/schemas/BatchHierarchy'
+      required: [code, message, data]
+    ResultPrepackageHierarchy:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "0"
+        message:
+          type: string
+          example: OK
+        data:
+          $ref: '#/components/schemas/PrepackageHierarchy'
+      required: [code, message, data]
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "404"
+        message:
+          type: string
+          example: Batch not found
+        data:
+          nullable: true
+      required: [code, message]
+    BatchHierarchy:
+      type: object
+      properties:
+        batch:
+          $ref: '#/components/schemas/Batch'
+        optimizingFiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/OptimizingFile'
+      required: [batch, optimizingFiles]
+    PrepackageHierarchy:
+      type: object
+      properties:
+        prepackageOrder:
+          $ref: '#/components/schemas/PrepackageOrder'
+      required: [prepackageOrder]
+    Batch:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        batchNum: { type: string }
+        batchType: { type: integer, format: int32 }
+        productTime: { type: string, format: date }
+      required: [id, batchNum]
+    OptimizingFile:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        batchId: { type: integer, format: int64 }
+        optimizingFileName: { type: string }
+        stationCode: { type: string }
+        urgency: { type: integer, format: int32 }
+        workOrders:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkOrder'
+      required: [id, batchId, workOrders]
+    WorkOrder:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        batchId: { type: integer, format: int64 }
+        optimizingFileId: { type: integer, format: int64, nullable: true }
+        workId: { type: string }
+        route: { type: string }
+        orderType: { type: string }
+        prepackageStatus: { type: integer, format: int32 }
+        prepackageOrder:
+          $ref: '#/components/schemas/PrepackageOrder'
+      required: [id, batchId, workId]
+    PrepackageOrder:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        workOrderId: { type: integer, format: int64 }
+        orderNum: { type: string }
+        consignor: { type: string }
+        receiver: { type: string }
+        installAddress: { type: string }
+        boxes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Box'
+      required: [id, workOrderId, orderNum, boxes]
+    Box:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        prepackageOrderId: { type: integer, format: int64 }
+        boxCode: { type: string }
+        building: { type: string }
+        house: { type: string }
+        room: { type: string }
+        packages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Package'
+      required: [id, prepackageOrderId, boxCode, packages]
+    Package:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        boxId: { type: integer, format: int64 }
+        packageNo: { type: integer, format: int32 }
+        length: { type: number, format: double }
+        width: { type: number, format: double }
+        depth: { type: number, format: double }
+        weight: { type: number, format: double }
+        boxType: { type: string }
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Part'
+      required: [id, boxId, packageNo, parts]
+    Part:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        packageId: { type: integer, format: int64 }
+        partCode: { type: string }
+        layer: { type: integer, format: int32 }
+        piece: { type: integer, format: int32 }
+        itemCode: { type: string }
+        matName: { type: string }
+        itemLength: { type: number, format: double }
+        itemWidth: { type: number, format: double }
+        itemDepth: { type: number, format: double }
+        xAxis: { type: number, format: double }
+        yAxis: { type: number, format: double }
+        zAxis: { type: number, format: double }
+        sortOrder: { type: integer, format: int32 }
+        standardList: { type: string }
+        workReports:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkReport'
+      required: [id, packageId, partCode, workReports]
+    WorkReport:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        partCode: { type: string }
+        partStatus: { type: string }
+        stationCode: { type: string }
+        reportTime: { type: string, format: date-time }
+      required: [id, partCode]

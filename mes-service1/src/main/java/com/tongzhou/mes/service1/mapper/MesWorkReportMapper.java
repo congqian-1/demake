@@ -20,6 +20,10 @@ package com.tongzhou.mes.service1.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.tongzhou.mes.service1.pojo.entity.MesWorkReport;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
  * 报工记录表Mapper接口
@@ -28,4 +32,17 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface MesWorkReportMapper extends BaseMapper<MesWorkReport> {
+
+    /**
+     * Select work reports by part codes.
+     */
+    @Select({"<script>",
+        "SELECT * FROM mes_work_report",
+        "WHERE part_code IN",
+        "<foreach collection='partCodes' item='code' open='(' separator=',' close=')'>",
+        "#{code}",
+        "</foreach>",
+        "AND is_deleted = 0",
+        "</script>"})
+    List<MesWorkReport> selectByPartCodes(@Param("partCodes") List<String> partCodes);
 }

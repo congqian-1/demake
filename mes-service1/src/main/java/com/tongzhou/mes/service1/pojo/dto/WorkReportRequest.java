@@ -70,12 +70,6 @@ public class WorkReportRequest {
     private String operatorName;
 
     /**
-     * 是否完成（0=未完成/1=已完成）
-     */
-    @NotNull(message = "完成状态不能为空")
-    private Integer isCompleted;
-
-    /**
      * 真实打包包号（可选）
      */
     private String realPackageNo;

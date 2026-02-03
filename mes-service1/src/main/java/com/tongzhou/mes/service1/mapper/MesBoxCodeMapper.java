@@ -22,6 +22,9 @@ import com.tongzhou.mes.service1.pojo.entity.MesBoxCode;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
  * 箱码表Mapper接口
@@ -30,6 +33,19 @@ import org.apache.ibatis.annotations.Param;
  */
 @Mapper
 public interface MesBoxCodeMapper extends BaseMapper<MesBoxCode> {
+
+    /**
+     * Select box codes by prepackage order ids.
+     */
+    @Select({"<script>",
+        "SELECT * FROM mes_box",
+        "WHERE prepackage_order_id IN",
+        "<foreach collection='prepackageOrderIds' item='id' open='(' separator=',' close=')'>",
+        "#{id}",
+        "</foreach>",
+        "AND is_deleted = 0",
+        "</script>"})
+    List<MesBoxCode> selectByPrepackageOrderIds(@Param("prepackageOrderIds") List<Long> prepackageOrderIds);
 
     /**
      * Physically delete box codes by workId during overwrite pulls.

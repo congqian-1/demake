@@ -22,6 +22,9 @@ import com.tongzhou.mes.service1.pojo.entity.MesOptimizationFile;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
  * 优化文件表Mapper接口
@@ -30,6 +33,12 @@ import org.apache.ibatis.annotations.Param;
  */
 @Mapper
 public interface MesOptimizationFileMapper extends BaseMapper<MesOptimizationFile> {
+
+    /**
+     * Select optimizing files by batch id.
+     */
+    @Select("SELECT * FROM mes_optimizing_file WHERE batch_id = #{batchId} AND is_deleted = 0")
+    List<MesOptimizationFile> selectByBatchId(@Param("batchId") Long batchId);
     
     /**
      * 物理删除指定批次的所有优化文件

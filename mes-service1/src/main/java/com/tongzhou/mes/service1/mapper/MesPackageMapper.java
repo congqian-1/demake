@@ -22,6 +22,9 @@ import com.tongzhou.mes.service1.pojo.entity.MesPackage;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
  * 包件表Mapper接口
@@ -30,6 +33,19 @@ import org.apache.ibatis.annotations.Param;
  */
 @Mapper
 public interface MesPackageMapper extends BaseMapper<MesPackage> {
+
+    /**
+     * Select packages by box ids.
+     */
+    @Select({"<script>",
+        "SELECT * FROM mes_package",
+        "WHERE box_id IN",
+        "<foreach collection='boxIds' item='id' open='(' separator=',' close=')'>",
+        "#{id}",
+        "</foreach>",
+        "AND is_deleted = 0",
+        "</script>"})
+    List<MesPackage> selectByBoxIds(@Param("boxIds") List<Long> boxIds);
 
     /**
      * Physically delete packages by workId during overwrite pulls.

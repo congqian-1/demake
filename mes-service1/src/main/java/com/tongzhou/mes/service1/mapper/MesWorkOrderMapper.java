@@ -22,6 +22,9 @@ import com.tongzhou.mes.service1.pojo.entity.MesWorkOrder;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
  * 工单表Mapper接口
@@ -30,6 +33,19 @@ import org.apache.ibatis.annotations.Param;
  */
 @Mapper
 public interface MesWorkOrderMapper extends BaseMapper<MesWorkOrder> {
+
+    /**
+     * Select work orders by optimizing file ids.
+     */
+    @Select({"<script>",
+        "SELECT * FROM mes_work_order",
+        "WHERE optimizing_file_id IN",
+        "<foreach collection='optimizingFileIds' item='id' open='(' separator=',' close=')'>",
+        "#{id}",
+        "</foreach>",
+        "AND is_deleted = 0",
+        "</script>"})
+    List<MesWorkOrder> selectByOptimizingFileIds(@Param("optimizingFileIds") List<Long> optimizingFileIds);
     
     /**
      * 物理删除指定批次的所有工单

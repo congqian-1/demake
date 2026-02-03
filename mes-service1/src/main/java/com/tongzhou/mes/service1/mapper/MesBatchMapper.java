@@ -20,6 +20,8 @@ package com.tongzhou.mes.service1.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.tongzhou.mes.service1.pojo.entity.MesBatch;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 /**
  * 批次表Mapper接口
@@ -28,4 +30,10 @@ import org.apache.ibatis.annotations.Mapper;
  */
 @Mapper
 public interface MesBatchMapper extends BaseMapper<MesBatch> {
+
+    /**
+     * Select batch by batch number.
+     */
+    @Select("SELECT * FROM mes_batch WHERE batch_num = #{batchNum} AND is_deleted = 0")
+    MesBatch selectByBatchNum(@Param("batchNum") String batchNum);
 }

@@ -1,531 +1,528 @@
 <!--
 =============================================================================
-SYNC IMPACT REPORT - Constitution v1.2.0
+同步影响报告 - 宪章 v1.2.1
 =============================================================================
 
-Version Change: 1.1.0 → 1.2.0 (MINOR)
-Updated: 2026-01-25
+版本变化：1.2.0 → 1.2.1（PATCH）
+更新日期：2026-02-02
 
-Modified Principles:
-- None (existing principles unchanged)
+修改的原则（标题翻译）：
+- I. Modular Service Architecture → I. 模块化服务架构
+- II. Multi-Environment Configuration → II. 多环境配置
+- III. Build Consistency & Dependency Management → III. 构建一致性与依赖管理
+- IV. Observability & Operational Excellence → IV. 可观测性与运维卓越
+- V. Test-Driven Development (RECOMMENDED) → V. 测试驱动开发（推荐）
+- VI. Java Coding Standards & Best Practices → VI. Java 编码规范与最佳实践
+- VII. Test File & Intermediate Artifact Management → VII. 测试文件与中间产物管理
 
-Added Sections:
-- VII. Test File & Intermediate Artifact Management (NEW PRINCIPLE)
-  - Test file organization and isolation
-  - Branch-specific test artifact management
-  - Git exclusion requirements for intermediate files
-  - Mock service and test script conventions
-  - Documentation artifact handling
+新增章节：无
 
-Removed Sections:
-- None
+移除章节：无
 
-Templates Status:
-✅ plan-template.md - Aligned (Project Structure supports test/ directory)
-✅ spec-template.md - Aligned (User scenarios support independent testing)
-✅ tasks-template.md - Aligned (Test tasks can reference test/ directory structure)
-✅ .gitignore updated - Added test/ directory exclusion
+模板更新状态：
+✅ .specify/templates/plan-template.md - 已对齐
+✅ .specify/templates/spec-template.md - 已对齐
+✅ .specify/templates/tasks-template.md - 已对齐
+✅ .specify/templates/checklist-template.md - 已对齐
+✅ .specify/templates/agent-file-template.md - 已对齐
 
-Follow-up TODOs: None
+后续 TODO：无
 
-Rationale for MINOR bump:
-- New principle (VII) added for test file and intermediate artifact management
-- Establishes mandatory conventions for organizing test-related files
-- Existing principles and rules remain unchanged (backward compatible)
-- Quality gates extended to include test artifact verification
+版本变更理由（PATCH）：
+- 仅进行中文化与措辞澄清，不改变治理规则或原则本身
+- 未新增/移除原则或章节，属于非语义性修订
 
 =============================================================================
 -->
 
-# Tongzhou MES Constitution
+# Tongzhou MES 宪章
 
-## Core Principles
+## 核心原则
 
-### I. Modular Service Architecture
+### I. 模块化服务架构
 
-Each service MUST be independently deployable, testable, and scalable. Services are organized by business domain (gateway, admin-bff, basic, service1, thirdparty, openapi) with clear API boundaries. API modules (mes-api/*-api) provide contract-first interfaces consumed by service implementations.
+每个服务必须可独立部署、测试和扩展。服务按业务域组织（gateway、admin-bff、basic、service1、thirdparty、openapi），并保持清晰的 API 边界。API 模块（`mes-api/*-api`）提供契约优先接口，由服务实现消费。
 
-**Rationale**: Microservices architecture enables independent team velocity, isolated failure domains, and flexible scaling. Contract-first API design ensures backward compatibility and clear service boundaries.
+**理由**：微服务架构支持团队独立迭代、故障隔离和弹性扩展。契约优先的 API 设计确保向后兼容和边界清晰。
 
-**Rules**:
-- Each service MUST have a corresponding API module in `mes-api/` if it exposes interfaces to other services
-- Services MUST NOT directly depend on other service implementations, only on API modules
-- Service communication MUST go through defined API contracts (Feign clients)
-- Shared configuration MUST reside in `mes-parent` POM
+**规则**：
+- 每个对外暴露接口的服务，必须在 `mes-api/` 下有对应的 API 模块
+- 服务之间不得直接依赖其他服务的实现，只能依赖 API 模块
+- 服务间通信必须通过已定义的 API 契约（Feign 客户端）
+- 共享配置必须集中在 `mes-parent` POM 中
 
-### II. Multi-Environment Configuration
+### II. 多环境配置
 
-The system MUST support five deployment environments with profile-based configuration: local (default), dev, stg, pet, prd. Environment-specific settings are externalized through Nacos configuration center.
+系统必须支持五套部署环境，并通过 profile 进行配置切换：local（默认）、dev、stg、pet、prd。环境差异配置通过 Nacos 配置中心外置化管理。
 
-**Rationale**: Manufacturing systems require rigorous testing through multiple stages before production deployment. Profile-based configuration prevents environment-specific code changes and reduces deployment risk.
+**理由**：制造系统需要多阶段验证后才能进入生产。使用 profile 可避免环境特定代码变更，降低部署风险。
 
-**Rules**:
-- All services MUST declare `spring.profiles.active=@profile.active@` in `bootstrap.yml`
-- Sensitive credentials (Nacos password, database passwords) MUST be injected via startup parameters, NOT committed to source control
-- Local profile MUST work with minimal external dependencies (local Nacos, MySQL, Redis)
-- Environment-specific overrides MUST be documented in service README files
+**规则**：
+- 所有服务必须在 `bootstrap.yml` 中声明 `spring.profiles.active=@profile.active@`
+- 敏感凭据（Nacos 密码、数据库密码）必须通过启动参数注入，禁止提交到源码
+- local profile 必须尽量减少外部依赖（本地 Nacos、MySQL、Redis）
+- 环境差异配置必须在服务 README 中有明确说明
 
-### III. Build Consistency & Dependency Management
+### III. 构建一致性与依赖管理
 
-Maven multi-module build MUST ensure reproducible builds with consistent dependency versions. Parent POM (`mes-parent`) centralizes dependency management using Macula Boot BOM.
+Maven 多模块构建必须保证可复现构建与一致依赖版本。父 POM（`mes-parent`）使用 Macula Boot BOM 统一依赖版本。
 
-**Rationale**: Microservices must maintain version compatibility to prevent runtime classpath conflicts. Centralized dependency management ensures all modules use tested, compatible library versions.
+**理由**：微服务需要保持版本兼容，避免运行时类路径冲突。依赖集中管理确保所有模块使用经过验证的兼容版本。
 
-**Rules**:
-- All service modules MUST inherit from `mes-parent` (version 1.0.0-SNAPSHOT)
-- API modules MUST set `maven.install.skip=false` to publish to local/remote repositories
-- Service modules MUST set `maven.install.skip=true` (no need to publish executable JARs)
-- Build order MUST be: `mes-parent` → `mes-api` → service modules
-- Before building a service, its API dependencies MUST be installed: `mvn install -pl mes-api/[service]-api -am -Dmaven.install.skip=false`
+**规则**：
+- 所有服务模块必须继承 `mes-parent`（版本 1.0.0-SNAPSHOT）
+- API 模块必须设置 `maven.install.skip=false` 以发布到本地/远程仓库
+- 服务模块必须设置 `maven.install.skip=true`（无需发布可执行 JAR）
+- 构建顺序必须为：`mes-parent` → `mes-api` → 服务模块
+- 构建服务前必须先安装其 API 依赖：`mvn install -pl mes-api/{service}-api -am -Dmaven.install.skip=false`
 
-### IV. Observability & Operational Excellence
+### IV. 可观测性与运维卓越
 
-All services MUST provide comprehensive logging, metrics, and health checks. Structured logging with correlation IDs enables distributed tracing across service boundaries.
+所有服务必须提供完善的日志、指标和健康检查。结构化日志与关联 ID 用于分布式追踪。
 
-**Rationale**: Manufacturing systems require 24/7 availability. Operational visibility is mandatory for rapid issue diagnosis and system reliability.
+**理由**：制造系统需要 7x24 稳定运行。可观测性是快速定位问题和提升系统可靠性的前提。
 
-**Rules**:
-- All services MUST use centralized logging with configurable levels (default: INFO root, DEBUG for `com.tongzhou.mes`)
-- Log files MUST be written to `${user.home}/logs/${spring.application.name}/`
-- All services MUST expose Spring Boot Actuator health endpoints
-- Services MUST use Swagger/OpenAPI for API documentation (`springdoc.swagger-ui.enabled=true`)
-- Services MUST implement proper exception handling with meaningful error messages returned via REST APIs
+**规则**：
+- 所有服务必须使用集中式日志并可配置级别（默认：root 为 INFO，`com.tongzhou.mes` 为 DEBUG）
+- 日志文件必须写入 `${user.home}/logs/${spring.application.name}/`
+- 所有服务必须暴露 Spring Boot Actuator 健康检查端点
+- 服务必须启用 Swagger/OpenAPI 文档（`springdoc.swagger-ui.enabled=true`）
+- 服务必须实现统一异常处理并通过 REST API 返回有意义的错误信息
 
-### V. Test-Driven Development (RECOMMENDED)
+### V. 测试驱动开发（推荐）
 
-Tests are RECOMMENDED for critical business logic and API contracts. When tests are written, they MUST follow the Red-Green-Refactor cycle.
+对关键业务逻辑与 API 契约的测试是推荐实践。编写测试时必须遵循红-绿-重构循环。
 
-**Rationale**: Manufacturing execution systems handle critical production data. While not mandatory for all features, tests for core business logic and service contracts significantly reduce production defects.
+**理由**：MES 涉及关键生产数据。虽然不强制覆盖所有功能，但核心逻辑与服务契约的测试能显著降低生产缺陷。
 
-**Rules**:
-- Contract tests RECOMMENDED for all Feign client interfaces in API modules
-- Integration tests RECOMMENDED for database operations and external service calls
-- Unit tests RECOMMENDED for complex business logic in service layers
-- When tests are written: Write test → Verify it fails → Implement → Verify it passes
-- Tests MUST use Spring Boot Test framework with appropriate test slices (`@WebMvcTest`, `@DataJpaTest`)
-- All builds MUST support `-DskipTests` for rapid iteration scenarios
-
-### VI. Java Coding Standards & Best Practices
-
-All Java code MUST adhere to industry-recognized standards and best practices to ensure maintainability, reliability, and performance in production environments.
-
-**Rationale**: Standardized coding practices reduce defects, improve code readability, and enable effective team collaboration. Following established guidelines from Alibaba Java Manual and Spring official documentation ensures battle-tested patterns are applied consistently across the codebase.
-
-**Rules**:
-
-#### 6.1 Alibaba Java Development Manual (Songshan Edition, 2023)
-
-- **Naming Conventions (MANDATORY)**:
-  - Class names MUST use UpperCamelCase (e.g., `OrderService`, `UserDTO`)
-  - Method/variable names MUST use lowerCamelCase (e.g., `getUserById`, `totalAmount`)
-  - Constants MUST use UPPER_SNAKE_CASE (e.g., `MAX_RETRY_COUNT`, `DEFAULT_TIMEOUT`)
-  - Package names MUST be lowercase (e.g., `com.tongzhou.mes.service`)
-  - Abstract classes MUST start with `Abstract` or `Base`
-  - Exception classes MUST end with `Exception`
-
-- **Code Formatting (MANDATORY)**:
-  - Indentation: 4 spaces (NO tabs)
-  - Line length SHOULD NOT exceed 120 characters
-  - Method length SHOULD NOT exceed 80 lines
-  - Class length SHOULD NOT exceed 500 lines
-  - Use `{}` for all control statements even single-line blocks
-
-- **Object-Oriented Programming (MANDATORY)**:
-  - AVOID using static methods unless truly stateless utility functions
-  - Constructor MUST NOT call overridable methods
-  - Override `equals()` MUST also override `hashCode()`
-  - Use `@Override` annotation for all overridden methods
-  - Prefer composition over inheritance
-
-- **Collection Usage (MANDATORY)**:
-  - Use `ArrayList` by default, `LinkedList` only when frequent insertions/deletions at head
-  - Use `HashMap` by default, specify initial capacity if size known: `new HashMap<>(expectedSize / 0.75 + 1)`
-  - NEVER modify collection while iterating (use Iterator.remove() or collect-then-modify pattern)
-  - Use `Collections.emptyList()` instead of `new ArrayList<>()` for empty returns
-
-- **Concurrent Programming (MANDATORY)**:
-  - Use thread pools from `java.util.concurrent.Executors` or Spring's `@Async`
-  - NEVER create threads via `new Thread()` directly
-  - Use `ThreadLocal` with caution, MUST call `remove()` in `finally` block
-  - Prefer `ConcurrentHashMap` over `Hashtable` or `Collections.synchronizedMap()`
-  - Double-check locking MUST use `volatile` keyword
-
-- **Exception Handling (MANDATORY)**:
-  - NEVER catch `Throwable` or `Error`, only `Exception` and its subclasses
-  - NEVER use exceptions for flow control
-  - Transaction methods MUST NOT catch exceptions without rethrowing or rolling back
-  - AVOID empty catch blocks; at minimum log the exception
-  - Use specific exceptions, AVOID generic `RuntimeException`
-
-#### 6.2 Spring / Spring Boot Best Practices
-
-- **Dependency Injection (MANDATORY)**:
-  - Use constructor injection (PREFERRED) over field injection
-  - Mark dependencies as `final` when using constructor injection
-  - AVOID `@Autowired` on fields; use constructor parameters
-  - Use `@RequiredArgsConstructor` (Lombok) for constructor injection boilerplate
-
-- **Component Scanning (MANDATORY)**:
-  - Place `@SpringBootApplication` at root package (e.g., `com.tongzhou.mes.service1`)
-  - AVOID `@ComponentScan` with broad base packages
-  - Use `@Lazy` annotation to prevent circular dependencies
-
-- **Configuration Management (MANDATORY)**:
-  - Use `@ConfigurationProperties` instead of multiple `@Value` annotations
-  - Externalize all environment-specific config to `application.yml` or Nacos
-  - NEVER hardcode IPs, ports, credentials, or business thresholds in code
-  - Use Spring profiles for environment-specific beans
-
-- **REST API Design (MANDATORY)**:
-  - Follow RESTful conventions: GET (query), POST (create), PUT (full update), PATCH (partial), DELETE (remove)
-  - Use plural nouns for resources: `/api/v1/orders`, NOT `/api/v1/order`
-  - HTTP status codes: 200 (OK), 201 (Created), 204 (No Content), 400 (Bad Request), 401 (Unauthorized), 404 (Not Found), 500 (Server Error)
-  - Return standard response wrapper: `Result<T>` with `code`, `message`, `data` fields
-  - Validate input using `@Valid` with Bean Validation annotations (`@NotNull`, `@Size`, etc.)
-
-- **Transaction Management (MANDATORY)**:
-  - Use `@Transactional` on service methods, NOT on controllers or repositories
-  - Specify `rollbackFor = Exception.class` to rollback on checked exceptions
-  - AVOID long-running transactions; keep them as short as possible
-  - NEVER perform remote calls (HTTP, RPC) inside transactions
-  - Use `@Transactional(readOnly = true)` for query-only methods (performance optimization)
-
-#### 6.3 Common Engineering Standards
-
-- **Logging Standards (MANDATORY)**:
-  - Use SLF4J API, NOT direct Logback/Log4j dependencies: `private static final Logger log = LoggerFactory.getLogger(ClassName.class);`
-  - Log levels: ERROR (system failure), WARN (recoverable issue), INFO (key business events), DEBUG (diagnostic details)
-  - NEVER log sensitive data (passwords, tokens, ID numbers, phone numbers)
-  - Use parameterized logging: `log.info("User {} logged in", userId)` NOT `log.info("User " + userId + " logged in")`
-  - Include correlation ID (trace ID) in logs for distributed tracing
-
-- **Resource Management (MANDATORY)**:
-  - Use try-with-resources for `AutoCloseable` objects (files, connections, streams)
-  - Close resources in `finally` block if try-with-resources not applicable
-  - Set reasonable timeouts for HTTP clients, database connections, Redis operations
-  - Use connection pools (Druid for JDBC, Lettuce for Redis) instead of direct connections
-
-- **Performance Considerations (MANDATORY)**:
-  - AVOID N+1 queries; use JOIN or batch queries
-  - Use pagination for large result sets; NEVER `SELECT * FROM table` without LIMIT
-  - Cache frequently accessed, rarely changed data in Redis
-  - Use asynchronous processing (`@Async`, MQ) for time-consuming operations
-  - Optimize SQL: Create indexes for WHERE/ORDER BY columns, AVOID `SELECT *`
-
-#### 6.4 MySQL Best Practices
-
-- **Schema Design (MANDATORY)**:
-  - Primary key: Use `BIGINT AUTO_INCREMENT` or distributed ID generator (Snowflake, UUID)
-  - AVOID `NULL` columns when possible; use default values (`DEFAULT ''`, `DEFAULT 0`)
-  - Use appropriate data types: `TINYINT` for boolean, `DECIMAL` for money, `VARCHAR(N)` with proper length
-  - Add indexes for foreign keys and frequently queried columns
-  - Include `created_time`, `updated_time`, `is_deleted` (soft delete) columns
-
-- **Query Optimization (MANDATORY)**:
-  - Use MyBatis Plus wrapper for dynamic queries, AVOID string concatenation
-  - LIMIT result sets: Use `PageHelper` or MyBatis Plus `Page<T>`
-  - AVOID `SELECT *`; specify required columns explicitly
-  - Use `EXPLAIN` to analyze query execution plans
-  - Index columns used in WHERE, JOIN, ORDER BY clauses
-
-- **Transaction Isolation (MANDATORY)**:
-  - Default isolation level: `READ_COMMITTED` (prevent dirty reads)
-  - Use `REPEATABLE_READ` only when necessary (MySQL default)
-  - AVOID `SERIALIZABLE` unless absolutely required (performance penalty)
-  - Use optimistic locking (version column) for high-concurrency updates
-
-#### 6.5 Redis Best Practices
-
-- **Key Design (MANDATORY)**:
-  - Use namespace prefix: `mes:service1:user:{userId}` (hierarchical structure)
-  - Set expiration (TTL) for all cache keys: `expire(key, duration)`
-  - Key length SHOULD be concise but readable (< 50 characters)
-  - Use consistent separators (`:` recommended)
-
-- **Data Structures (MANDATORY)**:
-  - STRING: Simple key-value, caching objects (JSON serialized)
-  - HASH: Object properties, avoid storing large objects
-  - LIST: Message queues, timeline data (use with caution for large lists)
-  - SET: Unique elements, tags, followers
-  - ZSET: Sorted rankings, time-series data
-
-- **Caching Strategies (MANDATORY)**:
-  - Cache-Aside pattern: Read from cache → Miss → Query DB → Update cache
-  - Prevent cache penetration: Cache empty results with short TTL, use Bloom filter
-  - Prevent cache breakdown: Use distributed locks (Redisson) for hot key updates
-  - Prevent cache avalanche: Stagger TTLs (add random offset), use multi-level cache
-
-- **Operations (MANDATORY)**:
-  - Use pipeline for batch operations (reduce network round-trips)
-  - Use `SCAN` instead of `KEYS` for key iteration (non-blocking)
-  - Avoid storing large values (> 1MB); split into smaller chunks if necessary
-  - Monitor slow queries (`SLOWLOG`), optimize commands taking > 10ms
-
-#### 6.6 Message Queue (MQ) Best Practices
-
-- **Message Design (MANDATORY)**:
-  - Include message ID, timestamp, business context in payload
-  - Use JSON for message serialization (human-readable, debuggable)
-  - Keep message size reasonable (< 1MB recommended)
-  - Design idempotent consumers (handle duplicate messages gracefully)
-
-- **Reliability Guarantees (MANDATORY)**:
-  - Producer: Enable transaction messages or confirmation callbacks
-  - Consumer: Use manual acknowledgment (ACK), NOT auto-acknowledge
-  - Implement retry mechanism with exponential backoff
-  - Use dead-letter queue (DLQ) for messages exceeding max retries
-
-#### 6.7 High Concurrency, High Availability, Data Consistency
-
-- **Concurrency Patterns (MANDATORY)**:
-  - Use distributed locks (Redisson, Zookeeper) for critical sections across instances
-  - Implement rate limiting (Sentinel, Guava RateLimiter) to prevent overload
-  - Use thread pools with bounded queues to prevent resource exhaustion
-  - Avoid blocking operations in event loops or reactive streams
-
-- **High Availability (MANDATORY)**:
-  - Service degradation: Provide fallback responses when dependencies fail
-  - Circuit breaker (Sentinel, Hystrix): Fail fast to prevent cascading failures
-  - Implement health checks: `/actuator/health` endpoint with dependency checks
-  - Use service registry (Nacos) for dynamic service discovery
-
-- **Data Consistency (MANDATORY)**:
-  - Distributed transactions: Use Seata for ACID guarantees (if enabled)
-  - Eventual consistency: Use message queue (transactional message) for cross-service operations
-  - Compensating transactions: Implement rollback logic for saga pattern
-  - Optimistic locking: Use version field to prevent lost updates
-  - Idempotency: Use unique request ID to prevent duplicate processing
-
-- **Monitoring & Alerting (MANDATORY)**:
-  - Expose metrics via Actuator: `/actuator/metrics`, `/actuator/prometheus`
-  - Define SLOs: Response time (p95 < 200ms), availability (> 99.9%), error rate (< 0.1%)
-  - Alert on anomalies: CPU > 80%, memory > 85%, error rate spike, slow queries
-  - Use distributed tracing (SkyWalking, Zipkin) for cross-service debugging
-
-### VII. Test File & Intermediate Artifact Management
-
-All test-related files, mock services, test scripts, and intermediate artifacts generated during development MUST be isolated from production code and organized by feature branch. These artifacts MUST NOT be committed to version control.
-
-**Rationale**: Development and testing generate numerous intermediate files (mock APIs, test scripts, temporary documentation) that support the development process but are not part of the deliverable product. Isolating these artifacts prevents repository clutter, maintains a clean Git history, and clearly separates production code from development tooling. Branch-specific organization enables parallel feature development without artifact conflicts.
-
-**Rules**:
-
-#### 7.1 Test Directory Structure (MANDATORY)
-
-- All test-related artifacts MUST be placed in the `test/` directory at repository root
-- Test artifacts MUST be organized by feature branch following this structure:
+**规则**：
+- Feign 客户端接口的契约测试：推荐
+- 数据库操作与外部服务调用的集成测试：推荐
+- 服务层复杂业务逻辑的单元测试：推荐
+- 编写测试时必须遵循：先写测试 → 验证失败 → 实现功能 → 验证通过
+- 测试必须使用 Spring Boot Test 框架与合适的测试切片（`@WebMvcTest`、`@DataJpaTest`）
+- 所有构建必须支持 `-DskipTests` 以便快速迭代
+
+### VI. Java 编码规范与最佳实践
+
+所有 Java 代码必须遵循行业规范与最佳实践，以保证可维护性、可靠性与生产性能。
+
+**理由**：统一编码规范可降低缺陷、提升可读性，并保证团队协作效率。遵循《阿里巴巴 Java 开发手册》和 Spring 官方实践能确保使用成熟、可靠的模式。
+
+**规则**：
+
+#### 6.1 阿里巴巴 Java 开发手册（嵩山版 2023）
+
+- **命名规范（必须）**：
+  - 类名必须使用 UpperCamelCase（例如：`OrderService`、`UserDTO`）
+  - 方法/变量名必须使用 lowerCamelCase（例如：`getUserById`、`totalAmount`）
+  - 常量必须使用 UPPER_SNAKE_CASE（例如：`MAX_RETRY_COUNT`、`DEFAULT_TIMEOUT`）
+  - 包名必须小写（例如：`com.tongzhou.mes.service`）
+  - 抽象类必须以 `Abstract` 或 `Base` 开头
+  - 异常类必须以 `Exception` 结尾
+
+- **代码格式（必须）**：
+  - 缩进：4 个空格（禁止 Tab）
+  - 单行长度不得超过 120 个字符
+  - 方法长度不得超过 80 行
+  - 类长度不得超过 500 行
+  - 所有控制语句必须使用 `{}`，即使只有一行
+
+- **面向对象（必须）**：
+  - 除非真正无状态，否则避免使用静态方法
+  - 构造函数不得调用可被覆盖的方法
+  - 重写 `equals()` 必须同步重写 `hashCode()`
+  - 所有重写方法必须使用 `@Override`
+  - 优先使用组合而非继承
+
+- **集合使用（必须）**：
+  - 默认使用 `ArrayList`，只有在头部频繁插入/删除时使用 `LinkedList`
+  - 默认使用 `HashMap`，若已知容量应指定初始容量：`new HashMap<>(expectedSize / 0.75 + 1)`
+  - 禁止在遍历时修改集合（使用 Iterator.remove() 或先收集后修改）
+  - 空集合返回使用 `Collections.emptyList()`，避免 `new ArrayList<>()`
+
+- **并发编程（必须）**：
+  - 线程池必须使用 `java.util.concurrent.Executors` 或 Spring 的 `@Async`
+  - 禁止直接 `new Thread()`
+  - 使用 `ThreadLocal` 必须在 `finally` 中调用 `remove()`
+  - 优先使用 `ConcurrentHashMap`，避免 `Hashtable` 或 `Collections.synchronizedMap()`
+  - 双重检查锁必须使用 `volatile`
+
+- **异常处理（必须）**：
+  - 禁止捕获 `Throwable` 或 `Error`，只捕获 `Exception` 及其子类
+  - 禁止用异常做流程控制
+  - 事务方法不得吞异常，必须抛出或触发回滚
+  - 禁止空 catch；至少记录日志
+  - 使用具体异常，避免泛化的 `RuntimeException`
+
+#### 6.2 Spring / Spring Boot 最佳实践
+
+- **依赖注入（必须）**：
+  - 优先构造器注入，避免字段注入
+  - 构造器注入的依赖必须标记为 `final`
+  - 避免在字段上使用 `@Autowired`，改用构造器参数
+  - 使用 `@RequiredArgsConstructor`（Lombok）减少样板代码
+
+- **组件扫描（必须）**：
+  - `@SpringBootApplication` 必须放在根包（例如：`com.tongzhou.mes.service1`）
+  - 避免使用过宽的 `@ComponentScan` base package
+  - 使用 `@Lazy` 避免循环依赖
+
+- **配置管理（必须）**：
+  - 使用 `@ConfigurationProperties` 替代多个 `@Value`
+  - 所有环境差异配置必须外置到 `application.yml` 或 Nacos
+  - 禁止在代码中硬编码 IP、端口、凭据或业务阈值
+  - 使用 Spring profile 管理环境专属 Bean
+
+- **REST API 设计（必须）**：
+  - 遵循 REST 语义：GET（查询）、POST（创建）、PUT（全量更新）、PATCH（部分更新）、DELETE（删除）
+  - 资源路径使用复数：`/api/v1/orders`，禁止 `/api/v1/order`
+  - 状态码：200（OK）、201（Created）、204（No Content）、400（Bad Request）、401（Unauthorized）、404（Not Found）、500（Server Error）
+  - 返回统一响应封装：`Result<T>`，包含 `code`、`message`、`data`
+  - 使用 `@Valid` + Bean Validation（`@NotNull`、`@Size` 等）验证输入
+
+- **事务管理（必须）**：
+  - `@Transactional` 只允许标在 service 层，禁止标在 controller 或 repository
+  - 必须设置 `rollbackFor = Exception.class` 以回滚受检异常
+  - 避免长事务，尽量缩短事务时长
+  - 禁止在事务内执行远程调用（HTTP、RPC）
+  - 查询方法使用 `@Transactional(readOnly = true)`
+
+#### 6.3 通用工程规范
+
+- **日志规范（必须）**：
+  - 使用 SLF4J API，禁止直接依赖 Logback/Log4j：`private static final Logger log = LoggerFactory.getLogger(ClassName.class);`
+  - 日志级别：ERROR（系统失败）、WARN（可恢复问题）、INFO（关键业务事件）、DEBUG（诊断细节）
+  - 禁止记录敏感信息（密码、token、证件号、手机号）
+  - 使用参数化日志：`log.info("User {} logged in", userId)`，禁止字符串拼接
+  - 日志必须包含关联 ID（trace ID）用于分布式追踪
+
+- **资源管理（必须）**：
+  - `AutoCloseable` 必须使用 try-with-resources
+  - 如果无法使用 try-with-resources，必须在 `finally` 中关闭
+  - HTTP 客户端、数据库、Redis 必须设置合理超时
+  - 使用连接池（JDBC 使用 Druid，Redis 使用 Lettuce）
+
+- **性能考虑（必须）**：
+  - 避免 N+1 查询；使用 JOIN 或批量查询
+  - 大结果集必须分页；禁止无 LIMIT 的 `SELECT *`
+  - 频繁读取且低变更数据应缓存到 Redis
+  - 耗时操作使用异步处理（`@Async`、MQ）
+  - 优化 SQL：为 WHERE/ORDER BY 列建立索引，禁止 `SELECT *`
+
+#### 6.4 MySQL 最佳实践
+
+- **表结构设计（必须）**：
+  - 主键：使用 `BIGINT AUTO_INCREMENT` 或分布式 ID（Snowflake、UUID）
+  - 尽量避免 `NULL`；使用默认值（`DEFAULT ''`、`DEFAULT 0`）
+  - 合理选择类型：布尔用 `TINYINT`，金额用 `DECIMAL`，字符串用合适长度的 `VARCHAR(N)`
+  - 为外键与高频查询字段建立索引
+  - 必须包含 `created_time`、`updated_time`、`is_deleted`（软删除）字段
+
+- **查询优化（必须）**：
+  - 动态查询使用 MyBatis Plus Wrapper，禁止字符串拼接
+  - 使用分页（PageHelper 或 MyBatis Plus `Page<T>`）
+  - 禁止 `SELECT *`，必须指定列
+  - 使用 `EXPLAIN` 分析执行计划
+  - WHERE / JOIN / ORDER BY 列必须建立索引
+
+- **事务隔离（必须）**：
+  - 默认隔离级别：`READ_COMMITTED`（避免脏读）
+  - 仅在必要时使用 `REPEATABLE_READ`（MySQL 默认）
+  - 除非必须，禁止 `SERIALIZABLE`（性能损耗大）
+  - 高并发更新使用乐观锁（version 字段）
+
+#### 6.5 Redis 最佳实践
+
+- **Key 设计（必须）**：
+  - 采用命名空间前缀：`mes:service1:user:{userId}`（层级结构）
+  - 所有缓存 Key 必须设置 TTL
+  - Key 长度应控制在 50 字符以内，保持可读
+  - 分隔符统一使用 `:`
+
+- **数据结构（必须）**：
+  - STRING：简单 KV，缓存对象（JSON 序列化）
+  - HASH：对象属性，避免存储大对象
+  - LIST：消息队列、时间线（大列表谨慎使用）
+  - SET：唯一集合、标签、关注
+  - ZSET：排行、时间序列
+
+- **缓存策略（必须）**：
+  - Cache-Aside：先读缓存 → 未命中 → 读 DB → 写缓存
+  - 防止缓存穿透：空值短 TTL 或布隆过滤器
+  - 防止缓存击穿：热点 Key 使用分布式锁（Redisson）
+  - 防止缓存雪崩：TTL 加随机偏移或多级缓存
+
+- **运维（必须）**：
+  - 批量操作使用 pipeline 减少网络往返
+  - 遍历 Key 使用 `SCAN`，禁止 `KEYS`
+  - 避免存储大值（>1MB），必要时拆分
+  - 监控慢查询（`SLOWLOG`），优化 >10ms 命令
+
+#### 6.6 消息队列（MQ）最佳实践
+
+- **消息设计（必须）**：
+  - 消息体必须包含 message ID、时间戳与业务上下文
+  - 序列化使用 JSON（便于调试与可读性）
+  - 消息大小建议 < 1MB
+  - 消费者必须实现幂等
+
+- **可靠性保证（必须）**：
+  - 生产者启用事务消息或确认回调
+  - 消费者必须手动 ACK，禁止自动确认
+  - 必须实现指数退避重试
+  - 超过最大重试必须进入死信队列（DLQ）
+
+#### 6.7 高并发、高可用与数据一致性
+
+- **并发模式（必须）**：
+  - 关键区段使用分布式锁（Redisson、Zookeeper）
+  - 必须实现限流（Sentinel、Guava RateLimiter）以避免过载
+  - 线程池必须使用有界队列，防止资源耗尽
+  - 禁止在事件循环或响应式流中执行阻塞操作
+
+- **高可用（必须）**：
+  - 依赖失败时必须提供降级响应
+  - 断路器（Sentinel、Hystrix）必须快速失败，避免级联故障
+  - 必须提供依赖健康检查（`/actuator/health`）
+  - 服务发现必须使用 Nacos
+
+- **数据一致性（必须）**：
+  - 分布式事务使用 Seata（如启用）保证 ACID
+  - 跨服务操作使用消息队列实现最终一致性
+  - 必须实现补偿事务（Saga）回滚逻辑
+  - 高并发更新使用乐观锁防止覆盖
+  - 使用唯一请求 ID 实现幂等
+
+- **监控与告警（必须）**：
+  - 通过 Actuator 暴露指标：`/actuator/metrics`、`/actuator/prometheus`
+  - 定义 SLO：响应时间（p95 < 200ms）、可用性（> 99.9%）、错误率（< 0.1%）
+  - 对异常指标告警：CPU > 80%、内存 > 85%、错误率突增、慢查询
+  - 使用分布式追踪（SkyWalking、Zipkin）进行跨服务排障
+
+### VII. 测试文件与中间产物管理
+
+开发过程中生成的测试文件、Mock 服务、测试脚本与中间产物必须与生产代码隔离，并按功能分支组织。这些中间产物不得提交到版本控制。
+
+**理由**：开发与测试会产生大量中间文件（Mock API、测试脚本、临时文档），它们支撑开发过程但不属于交付物。隔离中间产物可避免仓库污染，保持 Git 历史整洁，且便于多分支并行开发。
+
+**规则**：
+
+#### 7.1 测试目录结构（必须）
+
+- 所有测试相关中间产物必须放在仓库根目录 `test/`
+- 按分支组织测试产物，结构如下：
   ```
   test/
-  ├── {branch-name}/              # e.g., 001-mes-integration, 002-user-auth
-  │   ├── mock/                   # Mock services (API servers, stubs)
-  │   ├── scripts/                # Test execution scripts (bash, shell)
-  │   ├── data/                   # Test data files (JSON, CSV, SQL)
-  │   └── docs/                   # Test-related documentation (guides, reports)
-  └── shared/                     # Shared test utilities across branches
-      ├── utils/                  # Reusable test helper scripts
-      └── fixtures/               # Common test fixtures
+  ├── {branch-name}/              # 例如：001-mes-integration、002-user-auth
+  │   ├── mock/                   # Mock 服务（API 服务器、桩）
+  │   ├── scripts/                # 测试脚本（bash、shell）
+  │   ├── data/                   # 测试数据（JSON、CSV、SQL）
+  │   └── docs/                   # 测试文档（指南、报告）
+  └── shared/                     # 跨分支共享的测试工具
+      ├── utils/                  # 可复用的测试辅助脚本
+      └── fixtures/               # 通用测试夹具
   ```
-- Feature branch name MUST match the actual Git branch name (e.g., `test/001-mes-integration/` for branch `001-mes-integration`)
-- When switching branches, test artifacts from previous branches remain isolated
-- Shared utilities that benefit multiple features MAY be placed in `test/shared/`
+- 分支目录名必须与实际 Git 分支名一致（例如分支 `001-mes-integration` 对应 `test/001-mes-integration/`）
+- 切换分支时，测试产物必须保持隔离
+- 跨分支可复用的工具可放在 `test/shared/`
 
-#### 7.2 Mock Services (MANDATORY)
+#### 7.2 Mock 服务（必须）
 
-- Mock API servers MUST be placed in `test/{branch-name}/mock/`
-- Mock server filenames MUST indicate purpose: `mock-{service-name}-server.{ext}`
-  - Examples: `mock-third-party-api-server.js`, `mock-auth-server.py`
-- Mock servers MUST include a health check endpoint (e.g., `/health`, `/status`)
-- Mock servers MUST log requests to facilitate debugging: `{service-name}.log`
-- Mock data MUST be realistic but MUST NOT contain actual customer data or credentials
-- Mock servers SHOULD run on non-standard ports (9000+) to avoid conflicts with real services
+- Mock API 服务必须放在 `test/{branch-name}/mock/`
+- Mock 文件名必须表明用途：`mock-{service-name}-server.{ext}`
+  - 示例：`mock-third-party-api-server.js`、`mock-auth-server.py`
+- Mock 服务必须提供健康检查端点（例如 `/health`、`/status`）
+- Mock 服务必须记录请求日志以便排查：`{service-name}.log`
+- Mock 数据必须真实但不得包含客户真实数据或凭据
+- Mock 服务推荐使用非标准端口（9000+）避免冲突
 
-#### 7.3 Test Scripts (MANDATORY)
+#### 7.3 测试脚本（必须）
 
-- Test execution scripts MUST be placed in `test/{branch-name}/scripts/`
-- Script filenames MUST be descriptive and use kebab-case: `test-{feature}-{type}.sh`
-  - Examples: `test-batch-push-flow.sh`, `test-integration-full.sh`, `verify-all-tables.sh`
-- Scripts MUST include usage documentation in header comments
-- Scripts MUST set appropriate exit codes: 0 (success), non-zero (failure)
-- Scripts MUST be executable: `chmod +x test/{branch-name}/scripts/*.sh`
-- Scripts MUST clean up temporary resources (processes, files) on exit or failure
-- Database setup/teardown scripts MUST be idempotent (safe to run multiple times)
+- 测试脚本必须放在 `test/{branch-name}/scripts/`
+- 脚本名必须使用 kebab-case 且含义明确：`test-{feature}-{type}.sh`
+  - 示例：`test-batch-push-flow.sh`、`test-integration-full.sh`、`verify-all-tables.sh`
+- 脚本头部必须包含使用说明
+- 脚本必须返回正确的退出码：0（成功）、非 0（失败）
+- 脚本必须在退出或失败时清理临时资源（进程、文件）
+- 数据库初始化/清理脚本必须可重复执行（幂等）
 
-#### 7.4 Test Data (MANDATORY)
+#### 7.4 测试数据（必须）
 
-- Test data files MUST be placed in `test/{branch-name}/data/`
-- Data filenames MUST indicate content: `{entity}-{purpose}.{format}`
-  - Examples: `batch-samples.json`, `work-orders-mock.csv`, `schema-init.sql`
-- Test data MUST be version-controlled within the `test/` structure (unlike logs/outputs)
-- Sensitive data (passwords, tokens) MUST NOT be included; use placeholders like `<REPLACE_ME>`
-- Large binary test files (images, PDFs) SHOULD be generated programmatically rather than committed
+- 测试数据文件必须放在 `test/{branch-name}/data/`
+- 文件名必须表明内容：`{entity}-{purpose}.{format}`
+  - 示例：`batch-samples.json`、`work-orders-mock.csv`、`schema-init.sql`
+- 测试数据可以版本控制（与日志/输出不同）
+- 禁止包含敏感数据（密码、token）；必须使用占位符（如 `<REPLACE_ME>`）
+- 大型二进制测试文件（图片、PDF）应由程序生成而非提交
 
-#### 7.5 Test Documentation (MANDATORY)
+#### 7.5 测试文档（必须）
 
-- Test-related documentation MUST be placed in `test/{branch-name}/docs/`
-- Documentation types:
-  - **Test guides**: How to run tests (e.g., `TESTING-GUIDE.md`)
-  - **API references**: Mock API endpoint documentation (e.g., `MOCK-API-REFERENCE.md`)
-  - **Test reports**: Results summaries, coverage reports (e.g., `TEST-REPORT-2026-01-25.md`)
-  - **Setup instructions**: Environment setup for testing (e.g., `SETUP.md`)
-- Documentation filenames MUST use UPPER-KEBAB-CASE for visibility: `{PURPOSE}.md`
-- Test documentation SHOULD include:
-  - Prerequisites (dependencies, services required)
-  - Step-by-step execution instructions
-  - Expected results and validation criteria
-  - Troubleshooting common issues
+- 测试文档必须放在 `test/{branch-name}/docs/`
+- 文档类型：
+  - **测试指南**：如何运行测试（例如 `TESTING-GUIDE.md`）
+  - **API 参考**：Mock API 文档（例如 `MOCK-API-REFERENCE.md`）
+  - **测试报告**：结果摘要、覆盖率报告（例如 `TEST-REPORT-2026-01-25.md`）
+  - **环境说明**：测试环境准备（例如 `SETUP.md`）
+- 文档文件名必须使用 UPPER-KEBAB-CASE：`{PURPOSE}.md`
+- 测试文档推荐包含：
+  - 前置条件（依赖、需要的服务）
+  - 执行步骤
+  - 预期结果与验证标准
+  - 常见问题排查
 
-#### 7.6 Git Exclusion (MANDATORY)
+#### 7.6 Git 忽略（必须）
 
-- The entire `test/` directory MUST be excluded from version control via `.gitignore`
-- `.gitignore` MUST include these entries:
+- `test/` 目录必须在 `.gitignore` 中整体忽略
+- `.gitignore` 必须包含：
   ```gitignore
-  # Test files and intermediate artifacts
+  # 测试文件与中间产物
   test/
   ```
-- Exception: If certain test utilities in `test/shared/` are deemed valuable for the team, they MAY be committed after explicit team approval and constitution amendment
-- Test artifacts MUST NEVER appear in pull requests or commit history
-- Verify exclusion: `git status` MUST NOT show `test/` directory changes
+- 例外：若 `test/shared/` 中的某些工具对团队有价值，必须经过团队明确批准并修改宪章后才可提交
+- 测试中间产物不得出现在 PR 或提交历史中
+- 校验方式：`git status` 不得出现 `test/` 相关变更
 
-#### 7.7 Lifecycle Management (MANDATORY)
+#### 7.7 生命周期管理（必须）
 
-- Test artifacts for a feature branch SHOULD be created when the feature branch is created
-- Test artifacts MAY be deleted when the feature branch is merged and closed
-- If test artifacts are reusable for regression testing, move to `test/shared/` before branch deletion
-- Long-lived branches (e.g., `develop`, `staging`) MAY have persistent test directories
-- Developers MUST document any long-running mock services or background processes in `test/{branch-name}/docs/PROCESSES.md`
+- 功能分支创建时应同步创建对应 `test/{branch-name}/`
+- 功能分支合并关闭后，可删除对应测试产物
+- 若测试产物可用于回归，应在分支关闭前移动至 `test/shared/`
+- 长期分支（如 `develop`、`staging`）可保留长期测试目录
+- 必须在 `test/{branch-name}/docs/PROCESSES.md` 中记录长期运行的 Mock 服务或后台进程
 
-#### 7.8 CI/CD Integration (RECOMMENDED)
+#### 7.8 CI/CD 集成（推荐）
 
-- CI pipelines SHOULD be able to execute tests from `test/{branch-name}/scripts/`
-- CI MUST NOT fail if `test/` directory is missing (local development only)
-- CI MAY generate test reports and place them in `test/{branch-name}/docs/` (ephemeral, not committed)
-- CI SHOULD verify that no `test/` artifacts leak into commits (pre-commit hook recommended)
+- CI 流水线推荐支持执行 `test/{branch-name}/scripts/` 中的测试
+- CI 不得因缺少 `test/` 目录而失败（本地开发专用）
+- CI 可以生成测试报告并放在 `test/{branch-name}/docs/`（不提交）
+- CI 推荐校验测试产物未进入提交（建议使用 pre-commit hook）
 
-## Development Standards
+## 开发标准
 
-### Technology Stack
+### 技术栈
 
-- **Framework**: Spring Boot 2.7.18 (via Macula Boot 5.0.15)
-- **Language**: Java (version determined by Macula Boot parent)
-- **Service Discovery**: Nacos
-- **API Gateway**: Spring Cloud Gateway
-- **Authentication**: OAuth2 Resource Server (JWT)
-- **Database**: MySQL 8+ with Druid connection pool
-- **ORM**: MyBatis Plus
-- **Caching**: Redis
-- **API Documentation**: SpringDoc OpenAPI 3
-- **Feign Client**: OpenFeign with OkHttp
-- **Frontend**: Vue.js (mes-admin)
+- **框架**：Spring Boot 2.7.18（基于 Macula Boot 5.0.15）
+- **语言**：Java（版本由 Macula Boot parent 决定）
+- **服务发现**：Nacos
+- **API 网关**：Spring Cloud Gateway
+- **认证**：OAuth2 Resource Server（JWT）
+- **数据库**：MySQL 8+（Druid 连接池）
+- **ORM**：MyBatis Plus
+- **缓存**：Redis
+- **API 文档**：SpringDoc OpenAPI 3
+- **Feign 客户端**：OpenFeign + OkHttp
+- **前端**：Vue.js（mes-admin）
 
-### Code Organization
+### 代码组织
 
-Services follow standardized package structure:
-
-```
-com.tongzhou.mes.[service]/
-├── [Service]Application.java      # @SpringBootApplication entry point
-├── controller/                     # REST endpoints
-├── service/                        # Business logic layer
-├── mapper/                         # MyBatis Plus data access
-├── entity/                         # JPA/MyBatis entities
-├── dto/                           # Data transfer objects
-├── converter/                     # MapStruct converters
-└── config/                        # Service-specific configuration
-```
-
-API modules expose only interfaces and DTOs:
+服务模块采用统一包结构：
 
 ```
-com.tongzhou.mes.[service].api/
-├── feign/                         # Feign client interfaces
-├── dto/                           # Shared DTOs
-└── constants/                     # Shared constants
+com.tongzhou.mes.{service}/
+├── {Service}Application.java      # @SpringBootApplication 入口
+├── controller/                     # REST 接口
+├── service/                        # 业务逻辑
+├── mapper/                         # MyBatis Plus 数据访问
+├── entity/                         # 实体
+├── dto/                           # DTO
+├── converter/                     # MapStruct 转换
+└── config/                        # 服务配置
 ```
 
-### Security Requirements
+API 模块仅暴露接口与 DTO：
 
-- All services MUST validate JWT tokens via `spring.security.oauth2.resourceserver.jwt.jwk-set-uri`
-- Public endpoints MUST be explicitly whitelisted in `macula.security.ignore-urls`
-- Passwords MUST NEVER be committed to version control
-- Database credentials MUST be externalized to environment configuration
-- Services MUST enforce HTTPS in non-local environments
+```
+com.tongzhou.mes.{service}.api/
+├── feign/                         # Feign 客户端接口
+├── dto/                           # 共享 DTO
+└── constants/                     # 共享常量
+```
 
-## Quality Gates
+### 安全要求
 
-### Before Feature Development Starts
+- 所有服务必须通过 `spring.security.oauth2.resourceserver.jwt.jwk-set-uri` 校验 JWT
+- 公共接口必须在 `macula.security.ignore-urls` 中显式白名单
+- 密码不得提交到版本控制
+- 数据库凭据必须外置到环境配置
+- 非本地环境必须启用 HTTPS
 
-- [ ] Constitution Check: Verify feature aligns with modular architecture principles
-- [ ] API Contract Defined: If feature involves inter-service communication, API module MUST be designed first
-- [ ] Environment Requirements: Identify which environments (Nacos, MySQL, Redis) are required
-- [ ] Test Artifact Location: If feature requires test artifacts, create `test/{branch-name}/` directory structure
+## 质量门禁
 
-### Before Merging to Main Branch
+### 功能开发前
 
-- [ ] Build Success: `mvn clean install` completes without errors on all affected modules
-- [ ] Code Standards Compliance: Java code follows Alibaba Java Manual and Spring best practices (Principle VI)
-  - [ ] Naming conventions verified (classes, methods, variables, constants)
-  - [ ] No static abuse, proper OOP design
-  - [ ] Exception handling follows standards (no empty catches, proper transaction rollback)
-  - [ ] Logging uses parameterized format, no sensitive data logged
-  - [ ] Resource management uses try-with-resources
-  - [ ] SQL queries optimized (no N+1, proper indexes, pagination applied)
-  - [ ] Redis keys follow naming conventions with TTL set
-  - [ ] Concurrent code uses thread pools, proper locking mechanisms
-- [ ] Test Artifact Isolation: All test-related files confined to `test/{branch-name}/` (Principle VII)
-  - [ ] No test artifacts in `src/` or production directories
-  - [ ] `git status` shows no `test/` directory changes (properly ignored)
-  - [ ] Mock services documented and ports non-conflicting
-  - [ ] Test scripts are executable and include usage instructions
-- [ ] Code Review: At least one peer review with focus on API contracts, error handling, and configuration externalization
-- [ ] Manual Testing: Feature verified in local environment
-- [ ] Documentation Updated: README and API documentation reflect changes
-- [ ] No Secrets Committed: Scan for passwords, tokens, or sensitive data
+- [ ] 宪章检查：确认功能符合模块化架构原则
+- [ ] API 契约定义：涉及服务间通信时，必须先设计 API 模块
+- [ ] 环境依赖确认：明确需要的环境（Nacos、MySQL、Redis）
+- [ ] 测试产物位置：需要测试产物时，创建 `test/{branch-name}/` 目录结构
 
-### Before Production Deployment
+### 合并到主分支前
 
-- [ ] Multi-Environment Testing: Feature validated in dev → stg → pet progression
-- [ ] Performance Baseline: Service startup time and memory footprint acceptable
-- [ ] Rollback Plan: Previous version artifacts available for emergency rollback
-- [ ] Operations Handoff: Deployment steps, configuration changes, and monitoring alerts documented
+- [ ] 构建通过：所有相关模块 `mvn clean install` 成功
+- [ ] 代码规范合规：Java 代码符合原则 VI（编码规范）
+  - [ ] 命名规范检查（类、方法、变量、常量）
+  - [ ] 无静态滥用，OOP 设计合理
+  - [ ] 异常处理符合规范（无空 catch、事务回滚）
+  - [ ] 日志使用参数化格式且不包含敏感信息
+  - [ ] 资源管理使用 try-with-resources
+  - [ ] SQL 优化（避免 N+1、建索引、分页）
+  - [ ] Redis Key 命名与 TTL 合规
+  - [ ] 并发代码使用线程池与正确锁机制
+- [ ] 测试产物隔离：所有测试产物位于 `test/{branch-name}/`（原则 VII）
+  - [ ] `src/` 或生产目录中无测试产物
+  - [ ] `git status` 无 `test/` 变更（已忽略）
+  - [ ] Mock 服务有文档且端口不冲突
+  - [ ] 测试脚本可执行且包含使用说明
+- [ ] 代码评审：至少一次同行评审，聚焦 API 契约、异常处理、配置外置
+- [ ] 手工验证：本地环境完成验证
+- [ ] 文档更新：README 与 API 文档同步
+- [ ] 无敏感信息提交：扫描密码、token 等
 
-## Governance
+### 生产部署前
 
-### Amendment Process
+- [ ] 多环境验证：dev → stg → pet 验证完成
+- [ ] 性能基线：启动时间、内存占用符合要求
+- [ ] 回滚预案：保留上一个版本可回滚
+- [ ] 运维交接：部署步骤、配置变更、告警规则已记录
 
-1. Propose change via document review (must include rationale and impact analysis)
-2. Team approval required for MAJOR or MINOR version changes
-3. Update constitution version according to semantic versioning
-4. Propagate changes to affected templates and documentation
-5. Announce amendments to all team members
+## 治理
 
-### Constitution Versioning
+### 修订流程
 
-- **MAJOR** (X.0.0): Backward-incompatible changes (e.g., removing a principle, changing service architecture model)
-- **MINOR** (X.Y.0): New principles or sections added (e.g., adding security requirements)
-- **PATCH** (X.Y.Z): Clarifications, wording improvements, typo fixes
+1. 提交修改提案（必须包含理由与影响分析）
+2. MAJOR 或 MINOR 版本变更需团队批准
+3. 按语义化版本更新宪章版本号
+4. 同步影响到相关模板与文档
+5. 向团队发布变更通知
 
-### Compliance
+### 宪章版本规则
 
-- All code reviews MUST verify adherence to Core Principles (Sections I-VII)
-- Java code MUST comply with Principle VI (Coding Standards): Alibaba Java Manual, Spring best practices, middleware usage guidelines
-- Test artifacts MUST comply with Principle VII (Test File Management): Isolated in `test/` directory, branch-specific organization, Git-ignored
-- Any deviation from MUST requirements requires explicit justification documented in code or PR
-- Complexity violations (e.g., bypassing API modules) MUST be tracked in `plan.md` Complexity Tracking table
-- Code standards violations (e.g., using `new Thread()`, missing transaction annotations) MUST be identified and corrected before merge
-- Test artifact leakage (committing `test/` files, placing mocks in `src/`) MUST be rejected in code review
-- This constitution supersedes undocumented practices and tribal knowledge
+- **MAJOR**（X.0.0）：不兼容变更（如移除原则、改变服务架构模型）
+- **MINOR**（X.Y.0）：新增原则或章节
+- **PATCH**（X.Y.Z）：澄清、措辞优化、错别字修正
 
-### Enforcement
+### 合规要求
 
-Team leads review constitution compliance during:
-- Architecture design reviews (before implementation)
-- Pull request reviews (during implementation)
-- Retrospectives (after delivery)
+- 所有代码评审必须验证核心原则（I-VII）
+- Java 代码必须符合原则 VI（编码规范）：阿里规范、Spring 最佳实践、中间件规范
+- 测试产物必须符合原则 VII（测试文件管理）：`test/` 隔离、分支组织、Git 忽略
+- 任何违反“必须”的情况必须在代码或 PR 中明确说明理由
+- 复杂度违规（如绕过 API 模块）必须在 `plan.md` 的复杂度跟踪表中记录
+- 编码规范违规（如使用 `new Thread()`、缺少事务）必须在合并前修复
+- 测试产物泄漏（提交 `test/`、在 `src/` 放 Mock）必须在评审中拒绝
+- 本宪章优先于未记录的约定俗成
 
-Repeated violations require either:
-1. Amending the constitution to reflect actual practice (if violations are justified), OR
-2. Corrective action to bring code into compliance (if violations are harmful)
+### 执行
+
+团队负责人在以下环节审核宪章合规：
+- 架构设计评审（实现前）
+- PR 评审（实现中）
+- 复盘（交付后）
+
+重复违规必须二选一：
+1. 修订宪章以反映合理实践（若违规有合理性），或
+2. 采取纠正措施恢复合规（若违规有害）
 
 ---
 
-**Version**: 1.2.0 | **Ratified**: 2026-01-21 | **Last Amended**: 2026-01-25
+**版本**：1.2.1 | **批准生效**：2026-01-21 | **最近修订**：2026-02-02

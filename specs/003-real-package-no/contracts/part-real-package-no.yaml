@@ -1,0 +1,357 @@
+openapi: 3.0.3
+info:
+  title: Part Real Package No Contracts
+  version: 1.0.0
+paths:
+  /api/v1/production/work-report:
+    post:
+      summary: 提交板件报工
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkReportRequest'
+      responses:
+        '200':
+          description: OK
+        '409':
+          description: Conflict
+        '404':
+          description: Not Found
+  /api/v1/production/part/{partCode}/work-order-and-batch:
+    get:
+      summary: 查询批次层级
+      parameters:
+        - name: partCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultBatchHierarchy'
+  /api/v1/production/part/{partCode}/package:
+    get:
+      summary: 查询包装层级
+      parameters:
+        - name: partCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultPrepackageHierarchy'
+  /api/v1/production/part/{partCode}/detail:
+    get:
+      summary: 查询板件详情
+      parameters:
+        - name: partCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartDetailResponse'
+components:
+  schemas:
+    WorkReportRequest:
+      type: object
+      properties:
+        partCode:
+          type: string
+        partStatus:
+          type: string
+        stationCode:
+          type: string
+        stationName:
+          type: string
+        operatorId:
+          type: string
+        operatorName:
+          type: string
+        isCompleted:
+          type: integer
+        realPackageNo:
+          type: string
+          nullable: true
+      required:
+        - partCode
+        - partStatus
+        - stationCode
+        - isCompleted
+    ResultBatchHierarchy:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/BatchHierarchy'
+    BatchHierarchy:
+      type: object
+      properties:
+        batch:
+          $ref: '#/components/schemas/BatchDTO'
+        optimizingFiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/OptimizingFileDTO'
+    BatchDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        batchNum:
+          type: string
+        batchType:
+          type: integer
+        productTime:
+          type: string
+          format: date-time
+        simpleBatchNum:
+          type: string
+    OptimizingFileDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        batchId:
+          type: integer
+          format: int64
+        optimizingFileName:
+          type: string
+        stationCode:
+          type: string
+        urgency:
+          type: integer
+        workOrders:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkOrderDTO'
+    WorkOrderDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        workId:
+          type: string
+        batchId:
+          type: integer
+          format: int64
+        optimizingFileId:
+          type: integer
+          format: int64
+        batchNum:
+          type: string
+        route:
+          type: string
+        orderType:
+          type: string
+        prepackageStatus:
+          type: string
+        retryCount:
+          type: integer
+        lastPullTime:
+          type: string
+          format: date-time
+        errorMessage:
+          type: string
+        prepackageOrder:
+          $ref: '#/components/schemas/PrepackageOrderDTO'
+    ResultPrepackageHierarchy:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/PrepackageHierarchy'
+    PrepackageHierarchy:
+      type: object
+      properties:
+        prepackageOrder:
+          $ref: '#/components/schemas/PrepackageOrderDTO'
+    PrepackageOrderDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        workOrderId:
+          type: integer
+          format: int64
+        orderNum:
+          type: string
+        consignor:
+          type: string
+        receiver:
+          type: string
+        installAddress:
+          type: string
+        boxes:
+          type: array
+          items:
+            $ref: '#/components/schemas/BoxDTO'
+    BoxDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        prepackageOrderId:
+          type: integer
+          format: int64
+        batchNum:
+          type: string
+        workId:
+          type: string
+        boxCode:
+          type: string
+        building:
+          type: string
+        house:
+          type: string
+        room:
+          type: string
+        setno:
+          type: integer
+        color:
+          type: string
+        packages:
+          type: array
+          items:
+            $ref: '#/components/schemas/PackageDTO'
+    PackageDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        boxId:
+          type: integer
+          format: int64
+        packageNo:
+          type: integer
+        length:
+          type: number
+        width:
+          type: number
+        depth:
+          type: number
+        weight:
+          type: number
+        boxType:
+          type: string
+        parts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PartDTO'
+    PartDTO:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        packageId:
+          type: integer
+          format: int64
+        partCode:
+          type: string
+        layer:
+          type: integer
+        piece:
+          type: integer
+        itemCode:
+          type: string
+        itemName:
+          type: string
+        matName:
+          type: string
+        itemLength:
+          type: number
+        itemWidth:
+          type: number
+        itemDepth:
+          type: number
+        sortOrder:
+          type: integer
+        standardList:
+          type: string
+        realPackageNo:
+          type: string
+          nullable: true
+    PartDetailResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        partCode:
+          type: string
+        batchNum:
+          type: string
+        workId:
+          type: string
+        boxId:
+          type: integer
+          format: int64
+        packageId:
+          type: integer
+          format: int64
+        layer:
+          type: integer
+        piece:
+          type: integer
+        itemCode:
+          type: string
+        itemName:
+          type: string
+        matName:
+          type: string
+        itemLength:
+          type: number
+        itemWidth:
+          type: number
+        itemDepth:
+          type: number
+        xAxis:
+          type: number
+        yAxis:
+          type: number
+        zAxis:
+          type: number
+        sortOrder:
+          type: integer
+        standardListRaw:
+          type: string
+        isDeleted:
+          type: integer
+        createdTime:
+          type: string
+          format: date-time
+        updatedTime:
+          type: string
+          format: date-time
+        realPackageNo:
+          type: string
+          nullable: true

@@ -442,7 +442,7 @@ class MesIntegrationSpecTest {
             .stationName("开料")
             .operatorId("OP-1")
             .operatorName("测试员")
-            .isCompleted(1)
+
             .realPackageNo("PKG-REAL-001")
             .build();
 
@@ -469,7 +469,7 @@ class MesIntegrationSpecTest {
             .stationName("开料")
             .operatorId("OP-1")
             .operatorName("测试员")
-            .isCompleted(1)
+
             .build();
 
         mockMvc.perform(post("/api/v1/production/work-report")
@@ -509,7 +509,7 @@ class MesIntegrationSpecTest {
             .stationName("开料")
             .operatorId("OP-1")
             .operatorName("测试员")
-            .isCompleted(1)
+
             .build();
 
         mockMvc.perform(post("/api/v1/production/work-report")
