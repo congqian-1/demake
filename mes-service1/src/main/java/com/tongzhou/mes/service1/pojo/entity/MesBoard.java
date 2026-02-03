@@ -129,6 +129,11 @@ public class MesBoard {
     private String standardList;
 
     /**
+     * 真实打包包号
+     */
+    private String realPackageNo;
+
+    /**
      * 逻辑删除标识（0-未删除、1-已删除/关联板件已失效）
      */
     @TableLogic

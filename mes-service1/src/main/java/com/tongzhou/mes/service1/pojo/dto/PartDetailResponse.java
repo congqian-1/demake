@@ -96,6 +96,9 @@ public class PartDetailResponse {
     @Schema(description = "标准码原始JSON")
     private String standardListRaw;
 
+    @Schema(description = "真实打包包号")
+    private String realPackageNo;
+
     @Schema(description = "逻辑删除标识（0-未删除、1-已删除）")
     private Integer isDeleted;
 

@@ -182,6 +182,7 @@ CREATE TABLE IF NOT EXISTS mes_part (
     z_axis DECIMAL(10,2),
     sort_order INT,
     standard_list VARCHAR(2000),
+    real_package_no VARCHAR(100),
     is_deleted TINYINT DEFAULT 0,
     created_by VARCHAR(100),
     created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

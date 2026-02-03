@@ -74,4 +74,9 @@ public class WorkReportRequest {
      */
     @NotNull(message = "完成状态不能为空")
     private Integer isCompleted;
+
+    /**
+     * 真实打包包号（可选）
+     */
+    private String realPackageNo;
 }

@@ -443,6 +443,7 @@ class MesIntegrationSpecTest {
             .operatorId("OP-1")
             .operatorName("测试员")
             .isCompleted(1)
+            .realPackageNo("PKG-REAL-001")
             .build();
 
         mockMvc.perform(post("/api/v1/production/work-report")
@@ -450,6 +451,10 @@ class MesIntegrationSpecTest {
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
+
+        mockMvc.perform(get("/api/v1/production/part/{partCode}/detail", board.getPartCode()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.realPackageNo").value("PKG-REAL-001"));
 
         mockMvc.perform(post("/api/v1/production/work-report")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -472,6 +477,10 @@ class MesIntegrationSpecTest {
                 .content(objectMapper.writeValueAsString(changed)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
+
+        mockMvc.perform(get("/api/v1/production/part/{partCode}/detail", board.getPartCode()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.realPackageNo").value("PKG-REAL-001"));
 
         long reportCount = workReportMapper.selectCount(
             new LambdaQueryWrapper<MesWorkReport>().eq(MesWorkReport::getPartCode, board.getPartCode()));

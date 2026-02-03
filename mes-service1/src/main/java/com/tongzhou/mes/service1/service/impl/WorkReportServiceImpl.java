@@ -27,6 +27,7 @@ import com.tongzhou.mes.service1.pojo.entity.MesBoard;
 import com.tongzhou.mes.service1.pojo.entity.MesWorkReport;
 import com.tongzhou.mes.service1.service.WorkReportService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -94,6 +95,13 @@ public class WorkReportServiceImpl implements WorkReportService {
 
         // 4. 保存报工记录
         mesWorkReportMapper.insert(workReport);
+
+        if (StringUtils.hasText(request.getRealPackageNo())) {
+            MesBoard update = new MesBoard();
+            update.setId(part.getId());
+            update.setRealPackageNo(request.getRealPackageNo());
+            mesBoardMapper.updateById(update);
+        }
 
         log.info("板件报工成功，板件码: {}, 状态: {}, 工位: {}, 操作工: {}", 
             request.getPartCode(), request.getPartStatus(), 
