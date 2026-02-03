@@ -18,13 +18,17 @@
 package com.tongzhou.mes.service1.controller;
 
 import com.tongzhou.mes.service1.exception.PartNotFoundException;
-import com.tongzhou.mes.service1.exception.WorkOrderUpdatingException;
 import com.tongzhou.mes.service1.pojo.dto.PartDetailResponse;
-import com.tongzhou.mes.service1.pojo.dto.PartPackageResponse;
-import com.tongzhou.mes.service1.pojo.dto.PartWorkOrderBatchResponse;
+import com.tongzhou.mes.service1.pojo.dto.hierarchy.ErrorResponse;
+import com.tongzhou.mes.service1.pojo.dto.hierarchy.ResultBatchHierarchy;
+import com.tongzhou.mes.service1.pojo.dto.hierarchy.ResultPrepackageHierarchy;
 import com.tongzhou.mes.service1.service.PartQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -59,50 +63,23 @@ public class PartQueryController {
      * @return 工单、优化文件、批次信息
      */
     @GetMapping("/{partCode}/work-order-and-batch")
-    @Operation(summary = "查询工单与批次信息", description = "根据板件码查询该板件所属工单、优化文件和批次的完整信息")
-    public ResponseEntity<?> queryWorkOrderAndBatch(
+    @Operation(summary = "查询批次层级", description = "根据板件码查询对应批次及其完整层级结构")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Batch hierarchy result",
+            content = @Content(schema = @Schema(implementation = ResultBatchHierarchy.class))),
+        @ApiResponse(responseCode = "404", description = "Not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ResultBatchHierarchy> queryWorkOrderAndBatch(
             @Parameter(description = "板件码", required = true, example = "PART-001")
             @PathVariable String partCode) {
-        
-        try {
-            log.info("收到板件码查询工单与批次信息请求，板件码: {}", partCode);
-            
-            PartWorkOrderBatchResponse response = partQueryService.queryWorkOrderAndBatch(partCode);
-            
-            log.info("板件码查询工单与批次信息成功，板件码: {}", partCode);
-            return ResponseEntity.ok(response);
-            
-        } catch (PartNotFoundException e) {
-            log.warn("板件码不存在，板件码: {}", partCode);
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", e.getMessage());
-            errorResponse.put("partCode", partCode);
-            
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-            
-        } catch (WorkOrderUpdatingException e) {
-            log.warn("工单数据更新中，板件码: {}, 工单号: {}", partCode, e.getWorkId());
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", e.getMessage());
-            errorResponse.put("partCode", partCode);
-            errorResponse.put("workId", e.getWorkId());
-            
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
-            
-        } catch (Exception e) {
-            log.error("查询工单与批次信息失败，板件码: {}, 错误信息: {}", partCode, e.getMessage(), e);
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", "查询失败: " + e.getMessage());
-            errorResponse.put("partCode", partCode);
-            
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-        }
+
+        log.info("收到板件码查询批次层级请求，板件码: {}", partCode);
+
+        ResultBatchHierarchy response = partQueryService.queryWorkOrderAndBatch(partCode);
+
+        log.info("板件码查询批次层级成功，板件码: {}", partCode);
+        return ResponseEntity.ok(response);
     }
 
     /**
@@ -112,50 +89,23 @@ public class PartQueryController {
      * @return 箱码、订单、板件位置信息
      */
     @GetMapping("/{partCode}/package")
-    @Operation(summary = "查询包装数据", description = "根据板件码查询包装结构信息（订单→箱码→包件→板件）")
-    public ResponseEntity<?> queryPackage(
+    @Operation(summary = "查询包装层级", description = "根据板件码查询对应预包装订单及其完整层级结构")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Prepackage hierarchy result",
+            content = @Content(schema = @Schema(implementation = ResultPrepackageHierarchy.class))),
+        @ApiResponse(responseCode = "404", description = "Not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ResultPrepackageHierarchy> queryPackage(
             @Parameter(description = "板件码", required = true, example = "PART-001")
             @PathVariable String partCode) {
-        
-        try {
-            log.info("收到板件码查询包装数据请求，板件码: {}", partCode);
-            
-            PartPackageResponse response = partQueryService.queryPackage(partCode);
-            
-            log.info("板件码查询包装数据成功，板件码: {}", partCode);
-            return ResponseEntity.ok(response);
-            
-        } catch (PartNotFoundException e) {
-            log.warn("板件码不存在，板件码: {}", partCode);
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", e.getMessage());
-            errorResponse.put("partCode", partCode);
-            
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-            
-        } catch (WorkOrderUpdatingException e) {
-            log.warn("工单数据更新中，板件码: {}, 工单号: {}", partCode, e.getWorkId());
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", e.getMessage());
-            errorResponse.put("partCode", partCode);
-            errorResponse.put("workId", e.getWorkId());
-            
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
-            
-        } catch (Exception e) {
-            log.error("查询包装数据失败，板件码: {}, 错误信息: {}", partCode, e.getMessage(), e);
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("message", "查询失败: " + e.getMessage());
-            errorResponse.put("partCode", partCode);
-            
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-        }
+
+        log.info("收到板件码查询包装层级请求，板件码: {}", partCode);
+
+        ResultPrepackageHierarchy response = partQueryService.queryPackage(partCode);
+
+        log.info("板件码查询包装层级成功，板件码: {}", partCode);
+        return ResponseEntity.ok(response);
     }
 
     /**

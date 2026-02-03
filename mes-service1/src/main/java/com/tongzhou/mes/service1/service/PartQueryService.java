@@ -18,8 +18,8 @@
 package com.tongzhou.mes.service1.service;
 
 import com.tongzhou.mes.service1.pojo.dto.PartDetailResponse;
-import com.tongzhou.mes.service1.pojo.dto.PartPackageResponse;
-import com.tongzhou.mes.service1.pojo.dto.PartWorkOrderBatchResponse;
+import com.tongzhou.mes.service1.pojo.dto.hierarchy.ResultBatchHierarchy;
+import com.tongzhou.mes.service1.pojo.dto.hierarchy.ResultPrepackageHierarchy;
 
 /**
  * 板件查询服务接口
@@ -36,7 +36,7 @@ public interface PartQueryService {
      * @throws com.tongzhou.mes.service1.exception.PartNotFoundException 板件码不存在
      * @throws com.tongzhou.mes.service1.exception.WorkOrderUpdatingException 工单数据更新中
      */
-    PartWorkOrderBatchResponse queryWorkOrderAndBatch(String partCode);
+    ResultBatchHierarchy queryWorkOrderAndBatch(String partCode);
 
     /**
      * 根据板件码查询包装数据
@@ -46,7 +46,7 @@ public interface PartQueryService {
      * @throws com.tongzhou.mes.service1.exception.PartNotFoundException 板件码不存在
      * @throws com.tongzhou.mes.service1.exception.WorkOrderUpdatingException 工单数据更新中
      */
-    PartPackageResponse queryPackage(String partCode);
+    ResultPrepackageHierarchy queryPackage(String partCode);
 
     /**
      * 根据板件码查询板件详细信息

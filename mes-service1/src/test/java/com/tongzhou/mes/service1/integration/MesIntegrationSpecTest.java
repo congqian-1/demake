@@ -398,12 +398,12 @@ class MesIntegrationSpecTest {
 
         mockMvc.perform(get("/api/v1/production/part/{partCode}/work-order-and-batch", partCode))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.workOrder.workId").value(workId))
-            .andExpect(jsonPath("$.batch.batchNum").value(batchNum));
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].workId").value(workId))
+            .andExpect(jsonPath("$.data.batch.batchNum").value(batchNum));
 
         mockMvc.perform(get("/api/v1/production/part/{partCode}/package", partCode))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.box.boxCode").value(box.getBoxCode()));
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].boxCode").value(box.getBoxCode()));
 
         mockMvc.perform(get("/api/v1/production/part/{partCode}/detail", partCode))
             .andExpect(status().isOk())
