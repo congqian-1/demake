@@ -17,6 +17,7 @@
 
 package com.tongzhou.mes.service1.pojo.dto.hierarchy;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -25,10 +26,16 @@ import java.time.LocalDateTime;
  * Work report DTO.
  */
 @Data
+@Schema(description = "板件报工记录")
 public class WorkReportDTO {
+    @Schema(description = "报工ID", example = "5000")
     private Long id;
+    @Schema(description = "板件码", example = "PART-001")
     private String partCode;
+    @Schema(description = "板件状态", example = "DONE")
     private String partStatus;
+    @Schema(description = "工位编码", example = "C1A001")
     private String stationCode;
+    @Schema(description = "报工时间")
     private LocalDateTime reportTime;
 }

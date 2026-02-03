@@ -22,6 +22,11 @@ import com.tongzhou.mes.service1.exception.PartNotFoundException;
 import com.tongzhou.mes.service1.pojo.dto.WorkReportRequest;
 import com.tongzhou.mes.service1.service.WorkReportService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,7 +60,23 @@ public class WorkReportController {
      */
     @PostMapping
     @Operation(summary = "提交板件报工", description = "产线客户端提交板件报工记录，支持幂等性检查")
-    public ResponseEntity<Map<String, Object>> submitWorkReport(@Validated @RequestBody WorkReportRequest request) {
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "OK",
+            content = @Content(schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "400", description = "Validation error",
+            content = @Content(schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "404", description = "Not found",
+            content = @Content(schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "409", description = "Conflict",
+            content = @Content(schema = @Schema(implementation = Map.class))),
+        @ApiResponse(responseCode = "500", description = "Server error",
+            content = @Content(schema = @Schema(implementation = Map.class)))
+    })
+    public ResponseEntity<Map<String, Object>> submitWorkReport(
+            @Validated
+            @RequestBody(description = "板件报工请求", required = true,
+                content = @Content(schema = @Schema(implementation = WorkReportRequest.class)))
+            @org.springframework.web.bind.annotation.RequestBody WorkReportRequest request) {
         log.info("收到板件报工请求: {}", request);
 
         Map<String, Object> response = new HashMap<>();

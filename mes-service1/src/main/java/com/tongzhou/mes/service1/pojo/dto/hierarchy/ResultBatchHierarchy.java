@@ -17,14 +17,19 @@
 
 package com.tongzhou.mes.service1.pojo.dto.hierarchy;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
  * Batch hierarchy response wrapper.
  */
 @Data
+@Schema(description = "批次层级响应")
 public class ResultBatchHierarchy {
+    @Schema(description = "业务码", example = "0")
     private String code;
+    @Schema(description = "业务消息", example = "OK")
     private String message;
+    @Schema(description = "批次层级数据")
     private BatchHierarchy data;
 }

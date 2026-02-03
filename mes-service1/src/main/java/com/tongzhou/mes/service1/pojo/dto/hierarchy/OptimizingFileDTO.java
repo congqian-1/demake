@@ -17,6 +17,7 @@
 
 package com.tongzhou.mes.service1.pojo.dto.hierarchy;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -26,11 +27,18 @@ import java.util.List;
  * Optimizing file DTO.
  */
 @Data
+@Schema(description = "优化文件信息")
 public class OptimizingFileDTO {
+    @Schema(description = "优化文件ID", example = "10")
     private Long id;
+    @Schema(description = "批次ID", example = "1")
     private Long batchId;
+    @Schema(description = "优化文件名称", example = "OPT-BATCH-001.txt")
     private String optimizingFileName;
+    @Schema(description = "工位编码", example = "C1A001")
     private String stationCode;
+    @Schema(description = "紧急程度", example = "0")
     private Integer urgency;
+    @Schema(description = "工单列表")
     private List<WorkOrderDTO> workOrders = new ArrayList<>();
 }

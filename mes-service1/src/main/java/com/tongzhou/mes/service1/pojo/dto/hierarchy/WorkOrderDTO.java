@@ -17,19 +17,29 @@
 
 package com.tongzhou.mes.service1.pojo.dto.hierarchy;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
  * Work order DTO.
  */
 @Data
+@Schema(description = "工单信息")
 public class WorkOrderDTO {
+    @Schema(description = "工单ID", example = "100")
     private Long id;
+    @Schema(description = "批次ID", example = "1")
     private Long batchId;
+    @Schema(description = "优化文件ID", example = "10")
     private Long optimizingFileId;
+    @Schema(description = "工单号", example = "WO-001")
     private String workId;
+    @Schema(description = "工艺路线", example = "LINE-A")
     private String route;
+    @Schema(description = "工单类型", example = "STANDARD")
     private String orderType;
+    @Schema(description = "预包装状态", example = "DONE")
     private String prepackageStatus;
+    @Schema(description = "预包装订单")
     private PrepackageOrderDTO prepackageOrder;
 }

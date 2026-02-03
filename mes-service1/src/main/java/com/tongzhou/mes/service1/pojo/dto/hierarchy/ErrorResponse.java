@@ -17,14 +17,19 @@
 
 package com.tongzhou.mes.service1.pojo.dto.hierarchy;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
  * Error response wrapper.
  */
 @Data
+@Schema(description = "错误响应")
 public class ErrorResponse {
+    @Schema(description = "错误码", example = "404")
     private String code;
+    @Schema(description = "错误信息", example = "板件码 PART-001 不存在")
     private String message;
+    @Schema(description = "错误数据")
     private Object data;
 }

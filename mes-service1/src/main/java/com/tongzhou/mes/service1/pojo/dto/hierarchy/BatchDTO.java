@@ -17,6 +17,7 @@
 
 package com.tongzhou.mes.service1.pojo.dto.hierarchy;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -25,9 +26,14 @@ import java.time.LocalDateTime;
  * Batch DTO.
  */
 @Data
+@Schema(description = "批次信息")
 public class BatchDTO {
+    @Schema(description = "批次ID", example = "1")
     private Long id;
+    @Schema(description = "批次号", example = "BATCH-001")
     private String batchNum;
+    @Schema(description = "批次类型", example = "1")
     private Integer batchType;
+    @Schema(description = "生产时间")
     private LocalDateTime productTime;
 }

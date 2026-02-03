@@ -116,6 +116,14 @@ public class PartQueryController {
      */
     @GetMapping("/{partCode}/detail")
     @Operation(summary = "查询板件详细信息", description = "根据板件码查询板件自身的全部详细信息")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Part detail",
+            content = @Content(schema = @Schema(implementation = PartDetailResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Not found",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "Server error",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     public ResponseEntity<?> queryDetail(
             @Parameter(description = "板件码", required = true, example = "PART-001")
             @PathVariable String partCode) {

@@ -17,12 +17,15 @@
 
 package com.tongzhou.mes.service1.pojo.dto.hierarchy;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 /**
  * Prepackage hierarchy root.
  */
 @Data
+@Schema(description = "预包装层级根节点")
 public class PrepackageHierarchy {
+    @Schema(description = "预包装订单")
     private PrepackageOrderDTO prepackageOrder;
 }

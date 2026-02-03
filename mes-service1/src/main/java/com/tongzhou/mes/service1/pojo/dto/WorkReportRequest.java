@@ -17,6 +17,7 @@
 
 package com.tongzhou.mes.service1.pojo.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -34,43 +35,51 @@ import javax.validation.constraints.NotNull;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Schema(description = "板件报工请求")
 public class WorkReportRequest {
 
     /**
      * 板件码（唯一标识）
      */
+    @Schema(description = "板件码", required = true, example = "PART-001")
     @NotBlank(message = "板件码不能为空")
     private String partCode;
 
     /**
      * 板件状态（如：待加工、加工中、已完成等）
      */
+    @Schema(description = "板件状态", required = true, example = "DONE")
     @NotBlank(message = "板件状态不能为空")
     private String partStatus;
 
     /**
      * 工位编码
      */
+    @Schema(description = "工位编码", required = true, example = "C1A001")
     @NotBlank(message = "工位编码不能为空")
     private String stationCode;
 
     /**
      * 工位名称
      */
+    @Schema(description = "工位名称", example = "开料")
     private String stationName;
 
     /**
      * 操作工ID（可选）
      */
+    @Schema(description = "操作工ID", example = "OP-1")
     private String operatorId;
 
     /**
      * 操作工姓名（可选）
      */
+    @Schema(description = "操作工姓名", example = "测试员")
     private String operatorName;
 
     /**
      * 真实打包包号（可选）
      */
+    @Schema(description = "真实打包包号", example = "PKG-REAL-001")
     private String realPackageNo;
 }

@@ -17,6 +17,7 @@
 
 package com.tongzhou.mes.service1.pojo.dto.hierarchy;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -26,7 +27,10 @@ import java.util.List;
  * Batch hierarchy root.
  */
 @Data
+@Schema(description = "批次层级根节点")
 public class BatchHierarchy {
+    @Schema(description = "批次信息")
     private BatchDTO batch;
+    @Schema(description = "优化文件列表")
     private List<OptimizingFileDTO> optimizingFiles = new ArrayList<>();
 }

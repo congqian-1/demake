@@ -17,6 +17,7 @@
 
 package com.tongzhou.mes.service1.pojo.dto.hierarchy;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -26,12 +27,20 @@ import java.util.List;
  * Prepackage order DTO.
  */
 @Data
+@Schema(description = "预包装订单")
 public class PrepackageOrderDTO {
+    @Schema(description = "预包装订单ID", example = "1000")
     private Long id;
+    @Schema(description = "工单ID", example = "100")
     private Long workOrderId;
+    @Schema(description = "订单号", example = "ORDER-001")
     private String orderNum;
+    @Schema(description = "发货人")
     private String consignor;
+    @Schema(description = "收货人")
     private String receiver;
+    @Schema(description = "安装地址")
     private String installAddress;
+    @Schema(description = "箱码列表")
     private List<BoxDTO> boxes = new ArrayList<>();
 }
