@@ -1,0 +1,128 @@
+openapi: 3.0.3
+info:
+  title: Part Detail Hierarchy API
+  version: 1.0.0
+paths:
+  /api/v1/production/part/{partCode}/detail:
+    get:
+      summary: 查询板件详细信息并返回上层层级实体
+      parameters:
+        - name: partCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartDetailResponse'
+        '404':
+          description: Not found
+        '500':
+          description: Server error
+components:
+  schemas:
+    PartDetailResponse:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        partCode: { type: string }
+        batchNum: { type: string }
+        workId: { type: string }
+        boxId: { type: integer, format: int64 }
+        packageId: { type: integer, format: int64 }
+        layer: { type: integer }
+        piece: { type: integer }
+        itemCode: { type: string }
+        itemName: { type: string }
+        matName: { type: string }
+        itemLength: { type: number }
+        itemWidth: { type: number }
+        itemDepth: { type: number }
+        xAxis: { type: number }
+        yAxis: { type: number }
+        zAxis: { type: number }
+        sortOrder: { type: integer }
+        standardList: { type: array, items: { type: object } }
+        standardListRaw: { type: string }
+        realPackageNo: { type: string }
+        package:
+          $ref: '#/components/schemas/Package'
+        box:
+          $ref: '#/components/schemas/Box'
+        prepackageOrder:
+          $ref: '#/components/schemas/PrepackageOrder'
+        workOrder:
+          $ref: '#/components/schemas/WorkOrder'
+        optimizingFile:
+          $ref: '#/components/schemas/OptimizingFile'
+        batch:
+          $ref: '#/components/schemas/Batch'
+        isDeleted: { type: integer }
+        createdTime: { type: string, format: date-time }
+        updatedTime: { type: string, format: date-time }
+        description: { type: string }
+        color: { type: string }
+    Package:
+      type: object
+      nullable: true
+      properties:
+        id: { type: integer, format: int64 }
+        boxId: { type: integer, format: int64 }
+        packageNo: { type: integer }
+        length: { type: number }
+        width: { type: number }
+        depth: { type: number }
+        weight: { type: number }
+        boxType: { type: string }
+    Box:
+      type: object
+      nullable: true
+      properties:
+        id: { type: integer, format: int64 }
+        prepackageOrderId: { type: integer, format: int64 }
+        boxCode: { type: string }
+        building: { type: string }
+        house: { type: string }
+        room: { type: string }
+    PrepackageOrder:
+      type: object
+      nullable: true
+      properties:
+        id: { type: integer, format: int64 }
+        workOrderId: { type: integer, format: int64 }
+        orderNum: { type: string }
+        consignor: { type: string }
+        receiver: { type: string }
+        installAddress: { type: string }
+    WorkOrder:
+      type: object
+      nullable: true
+      properties:
+        id: { type: integer, format: int64 }
+        batchId: { type: integer, format: int64 }
+        optimizingFileId: { type: integer, format: int64 }
+        workId: { type: string }
+        route: { type: string }
+        orderType: { type: string }
+        prepackageStatus: { type: string }
+    OptimizingFile:
+      type: object
+      nullable: true
+      properties:
+        id: { type: integer, format: int64 }
+        batchId: { type: integer, format: int64 }
+        optimizingFileName: { type: string }
+        stationCode: { type: string }
+        urgency: { type: integer }
+    Batch:
+      type: object
+      nullable: true
+      properties:
+        id: { type: integer, format: int64 }
+        batchNum: { type: string }
+        batchType: { type: integer }
+        productTime: { type: string, format: date-time }

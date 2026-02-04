@@ -115,7 +115,7 @@ public class PartQueryController {
      * @return 板件详细信息
      */
     @GetMapping("/{partCode}/detail")
-    @Operation(summary = "查询板件详细信息", description = "根据板件码查询板件自身的全部详细信息")
+    @Operation(summary = "查询板件详细信息", description = "根据板件码查询板件自身与上层层级实体信息")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Part detail",
             content = @Content(schema = @Schema(implementation = PartDetailResponse.class))),

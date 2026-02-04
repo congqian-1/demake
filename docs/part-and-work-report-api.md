@@ -621,6 +621,12 @@ curl -X GET "/api/v1/production/part/PART-001/detail"
 | standardList | List<Map> | 标准码列表 |
 | standardListRaw | string | 标准码原始JSON |
 | realPackageNo | string | 真实打包包号 |
+| package | PackageSummary | 包件信息 |
+| box | BoxSummary | 箱子信息 |
+| prepackageOrder | PrepackageOrderSummary | 预包装订单信息 |
+| workOrder | WorkOrderSummary | 工单信息 |
+| optimizingFile | OptimizingFileSummary | 优化文件信息 |
+| batch | BatchSummary | 批次信息 |
 | isDeleted | integer | 逻辑删除标识 |
 | createdTime | string | 创建时间 |
 | updatedTime | string | 更新时间 |
@@ -654,6 +660,54 @@ curl -X GET "/api/v1/production/part/PART-001/detail"
   ],
   "standardListRaw": "[\"STD-A\"]",
   "realPackageNo": "PKG-REAL-001",
+  "package": {
+    "id": 3000,
+    "boxId": 2000,
+    "packageNo": 1,
+    "length": 120.0,
+    "width": 60.0,
+    "depth": 10.0,
+    "weight": 8.5,
+    "boxType": "A"
+  },
+  "box": {
+    "id": 2000,
+    "prepackageOrderId": 1000,
+    "boxCode": "BOX-001",
+    "building": "1",
+    "house": "1",
+    "room": "101"
+  },
+  "prepackageOrder": {
+    "id": 1000,
+    "workOrderId": 100,
+    "orderNum": "ORDER-001",
+    "consignor": "发货人A",
+    "receiver": "收货人B",
+    "installAddress": "安装地址A"
+  },
+  "workOrder": {
+    "id": 100,
+    "batchId": 1,
+    "optimizingFileId": 10,
+    "workId": "WO-001",
+    "route": "LINE-A",
+    "orderType": "STANDARD",
+    "prepackageStatus": "DONE"
+  },
+  "optimizingFile": {
+    "id": 10,
+    "batchId": 1,
+    "optimizingFileName": "OPT-BATCH-001.txt",
+    "stationCode": "C1A001",
+    "urgency": 0
+  },
+  "batch": {
+    "id": 1,
+    "batchNum": "BATCH-001",
+    "batchType": 1,
+    "productTime": "2026-02-03T10:00:00"
+  },
   "isDeleted": 0,
   "createdTime": "2026-02-03T10:00:00",
   "updatedTime": "2026-02-03T10:10:00",

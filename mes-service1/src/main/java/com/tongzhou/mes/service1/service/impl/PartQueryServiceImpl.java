@@ -24,8 +24,18 @@ import com.tongzhou.mes.service1.exception.PartNotFoundException;
 import com.tongzhou.mes.service1.exception.WorkOrderUpdatingException;
 import com.tongzhou.mes.service1.mapper.MesBatchMapper;
 import com.tongzhou.mes.service1.mapper.MesBoardMapper;
+import com.tongzhou.mes.service1.mapper.MesBoxCodeMapper;
+import com.tongzhou.mes.service1.mapper.MesOptimizationFileMapper;
+import com.tongzhou.mes.service1.mapper.MesPackageMapper;
+import com.tongzhou.mes.service1.mapper.MesPrepackageOrderMapper;
 import com.tongzhou.mes.service1.mapper.MesWorkOrderMapper;
+import com.tongzhou.mes.service1.pojo.dto.BatchSummary;
+import com.tongzhou.mes.service1.pojo.dto.BoxSummary;
+import com.tongzhou.mes.service1.pojo.dto.OptimizingFileSummary;
+import com.tongzhou.mes.service1.pojo.dto.PackageSummary;
 import com.tongzhou.mes.service1.pojo.dto.PartDetailResponse;
+import com.tongzhou.mes.service1.pojo.dto.PrepackageOrderSummary;
+import com.tongzhou.mes.service1.pojo.dto.WorkOrderSummary;
 import com.tongzhou.mes.service1.pojo.dto.hierarchy.ResultBatchHierarchy;
 import com.tongzhou.mes.service1.pojo.dto.hierarchy.ResultPrepackageHierarchy;
 import com.tongzhou.mes.service1.pojo.entity.*;
@@ -51,6 +61,10 @@ public class PartQueryServiceImpl implements PartQueryService {
     private final MesBoardMapper boardMapper;
     private final MesWorkOrderMapper workOrderMapper;
     private final MesBatchMapper batchMapper;
+    private final MesOptimizationFileMapper optimizationFileMapper;
+    private final MesPrepackageOrderMapper prepackageOrderMapper;
+    private final MesBoxCodeMapper boxCodeMapper;
+    private final MesPackageMapper packageMapper;
     private final BatchPackagingQueryService batchPackagingQueryService;
     private final ObjectMapper objectMapper;
 
@@ -156,7 +170,78 @@ public class PartQueryServiceImpl implements PartQueryService {
             throw new PartNotFoundException(partCode);
         }
 
-        // 2. 组装响应
+        // 2. 组装板件响应
+        PartDetailResponse response = toPartDetailResponse(board);
+
+        // 3. 组装上层实体
+        MesPackage packageEntity = null;
+        if (board.getPackageId() != null) {
+            packageEntity = packageMapper.selectById(board.getPackageId());
+        }
+        if (packageEntity != null) {
+            response.setPackageInfo(toPackageSummary(packageEntity));
+        }
+
+        MesBoxCode boxEntity = null;
+        if (board.getBoxId() != null) {
+            boxEntity = boxCodeMapper.selectById(board.getBoxId());
+        } else if (packageEntity != null && packageEntity.getBoxId() != null) {
+            boxEntity = boxCodeMapper.selectById(packageEntity.getBoxId());
+        }
+        if (boxEntity != null) {
+            response.setBox(toBoxSummary(boxEntity));
+        }
+
+        MesWorkOrder workOrder = null;
+        if (board.getWorkId() != null && !board.getWorkId().trim().isEmpty()) {
+            workOrder = workOrderMapper.selectOne(
+                new LambdaQueryWrapper<MesWorkOrder>()
+                    .eq(MesWorkOrder::getWorkId, board.getWorkId())
+            );
+        }
+        if (workOrder != null) {
+            response.setWorkOrder(toWorkOrderSummary(workOrder));
+        }
+
+        MesPrepackageOrder prepackageOrder = null;
+        if (workOrder != null && workOrder.getWorkId() != null) {
+            prepackageOrder = prepackageOrderMapper.selectByWorkId(workOrder.getWorkId());
+        } else if (boxEntity != null && boxEntity.getPrepackageOrderId() != null) {
+            prepackageOrder = prepackageOrderMapper.selectById(boxEntity.getPrepackageOrderId());
+        }
+        if (prepackageOrder != null) {
+            response.setPrepackageOrder(toPrepackageOrderSummary(prepackageOrder));
+        }
+
+        MesOptimizationFile optimizationFile = null;
+        if (workOrder != null && workOrder.getOptimizingFileId() != null) {
+            optimizationFile = optimizationFileMapper.selectById(workOrder.getOptimizingFileId());
+        }
+        if (optimizationFile != null) {
+            response.setOptimizingFile(toOptimizingFileSummary(optimizationFile));
+        }
+
+        MesBatch batch = null;
+        if (workOrder != null && workOrder.getBatchId() != null) {
+            batch = batchMapper.selectById(workOrder.getBatchId());
+        }
+        if (batch == null && board.getBatchNum() != null && !board.getBatchNum().trim().isEmpty()) {
+            batch = batchMapper.selectByBatchNum(board.getBatchNum());
+        }
+        if (batch == null && workOrder != null && workOrder.getBatchNum() != null
+            && !workOrder.getBatchNum().trim().isEmpty()) {
+            batch = batchMapper.selectByBatchNum(workOrder.getBatchNum());
+        }
+        if (batch != null) {
+            response.setBatch(toBatchSummary(batch));
+        }
+
+        log.info("查询板件码 {} 的详细信息成功", partCode);
+
+        return response;
+    }
+
+    private PartDetailResponse toPartDetailResponse(MesBoard board) {
         PartDetailResponse response = new PartDetailResponse();
         response.setId(board.getId());
         response.setPartCode(board.getPartCode());
@@ -184,25 +269,88 @@ public class PartQueryServiceImpl implements PartQueryService {
         // 兼容字段
         response.setDescription(board.getItemName());
         response.setColor(board.getMatName());
-        
+
         // 解析standardList JSON
         if (board.getStandardList() != null && !board.getStandardList().isEmpty()) {
             try {
                 List<Map<String, Integer>> standardList = objectMapper.readValue(
-                    board.getStandardList(), 
+                    board.getStandardList(),
                     new TypeReference<List<Map<String, Integer>>>() {}
                 );
                 response.setStandardList(standardList);
                 response.setStandardListRaw(board.getStandardList());
             } catch (Exception e) {
-                log.warn("解析板件 {} 的standardList失败: {}", partCode, e.getMessage());
+                log.warn("解析板件 {} 的standardList失败: {}", board.getPartCode(), e.getMessage());
                 response.setStandardListRaw(board.getStandardList());
             }
         }
 
-        log.info("查询板件码 {} 的详细信息成功", partCode);
-
         return response;
     }
 
+    private PackageSummary toPackageSummary(MesPackage pkg) {
+        PackageSummary summary = new PackageSummary();
+        summary.setId(pkg.getId());
+        summary.setBoxId(pkg.getBoxId());
+        summary.setPackageNo(pkg.getPackageNo());
+        summary.setLength(pkg.getLength());
+        summary.setWidth(pkg.getWidth());
+        summary.setDepth(pkg.getDepth());
+        summary.setWeight(pkg.getWeight());
+        summary.setBoxType(pkg.getBoxType());
+        return summary;
+    }
+
+    private BoxSummary toBoxSummary(MesBoxCode box) {
+        BoxSummary summary = new BoxSummary();
+        summary.setId(box.getId());
+        summary.setPrepackageOrderId(box.getPrepackageOrderId());
+        summary.setBoxCode(box.getBoxCode());
+        summary.setBuilding(box.getBuilding());
+        summary.setHouse(box.getHouse());
+        summary.setRoom(box.getRoom());
+        return summary;
+    }
+
+    private PrepackageOrderSummary toPrepackageOrderSummary(MesPrepackageOrder order) {
+        PrepackageOrderSummary summary = new PrepackageOrderSummary();
+        summary.setId(order.getId());
+        summary.setWorkOrderId(order.getWorkOrderId());
+        summary.setOrderNum(order.getOrderNum());
+        summary.setConsignor(order.getConsignor());
+        summary.setReceiver(order.getReceiver());
+        summary.setInstallAddress(order.getInstallAddress());
+        return summary;
+    }
+
+    private WorkOrderSummary toWorkOrderSummary(MesWorkOrder workOrder) {
+        WorkOrderSummary summary = new WorkOrderSummary();
+        summary.setId(workOrder.getId());
+        summary.setBatchId(workOrder.getBatchId());
+        summary.setOptimizingFileId(workOrder.getOptimizingFileId());
+        summary.setWorkId(workOrder.getWorkId());
+        summary.setRoute(workOrder.getRoute());
+        summary.setOrderType(workOrder.getOrderType());
+        summary.setPrepackageStatus(workOrder.getPrepackageStatus());
+        return summary;
+    }
+
+    private OptimizingFileSummary toOptimizingFileSummary(MesOptimizationFile file) {
+        OptimizingFileSummary summary = new OptimizingFileSummary();
+        summary.setId(file.getId());
+        summary.setBatchId(file.getBatchId());
+        summary.setOptimizingFileName(file.getOptimizingFileName());
+        summary.setStationCode(file.getStationCode());
+        summary.setUrgency(file.getUrgency());
+        return summary;
+    }
+
+    private BatchSummary toBatchSummary(MesBatch batch) {
+        BatchSummary summary = new BatchSummary();
+        summary.setId(batch.getId());
+        summary.setBatchNum(batch.getBatchNum());
+        summary.setBatchType(batch.getBatchType());
+        summary.setProductTime(batch.getProductTime());
+        return summary;
+    }
 }

@@ -17,6 +17,7 @@
 
 package com.tongzhou.mes.service1.pojo.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -98,6 +99,25 @@ public class PartDetailResponse {
 
     @Schema(description = "真实打包包号")
     private String realPackageNo;
+
+    @Schema(description = "包件信息")
+    @JsonProperty("package")
+    private PackageSummary packageInfo;
+
+    @Schema(description = "箱子信息")
+    private BoxSummary box;
+
+    @Schema(description = "预包装订单信息")
+    private PrepackageOrderSummary prepackageOrder;
+
+    @Schema(description = "工单信息")
+    private WorkOrderSummary workOrder;
+
+    @Schema(description = "优化文件信息")
+    private OptimizingFileSummary optimizingFile;
+
+    @Schema(description = "批次信息")
+    private BatchSummary batch;
 
     @Schema(description = "逻辑删除标识（0-未删除、1-已删除）")
     private Integer isDeleted;
