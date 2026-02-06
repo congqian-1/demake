@@ -49,6 +49,7 @@ components:
         standardList: { type: array, items: { type: object } }
         standardListRaw: { type: string }
         realPackageNo: { type: string }
+        latestPartStatus: { type: string }
         package:
           $ref: '#/components/schemas/Package'
         box:

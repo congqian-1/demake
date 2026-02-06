@@ -100,6 +100,9 @@ public class PartDetailResponse {
     @Schema(description = "真实打包包号")
     private String realPackageNo;
 
+    @Schema(description = "最新报工状态")
+    private String latestPartStatus;
+
     @Schema(description = "包件信息")
     @JsonProperty("package")
     private PackageSummary packageInfo;

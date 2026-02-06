@@ -621,6 +621,7 @@ curl -X GET "/api/v1/production/part/PART-001/detail"
 | standardList | List<Map> | 标准码列表 |
 | standardListRaw | string | 标准码原始JSON |
 | realPackageNo | string | 真实打包包号 |
+| latestPartStatus | string | 最新报工状态 |
 | package | PackageSummary | 包件信息 |
 | box | BoxSummary | 箱子信息 |
 | prepackageOrder | PrepackageOrderSummary | 预包装订单信息 |
@@ -660,6 +661,7 @@ curl -X GET "/api/v1/production/part/PART-001/detail"
   ],
   "standardListRaw": "[\"STD-A\"]",
   "realPackageNo": "PKG-REAL-001",
+  "latestPartStatus": "DONE",
   "package": {
     "id": 3000,
     "boxId": 2000,

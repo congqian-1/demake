@@ -29,6 +29,7 @@ import com.tongzhou.mes.service1.mapper.MesOptimizationFileMapper;
 import com.tongzhou.mes.service1.mapper.MesPackageMapper;
 import com.tongzhou.mes.service1.mapper.MesPrepackageOrderMapper;
 import com.tongzhou.mes.service1.mapper.MesWorkOrderMapper;
+import com.tongzhou.mes.service1.mapper.MesWorkReportMapper;
 import com.tongzhou.mes.service1.pojo.dto.BatchSummary;
 import com.tongzhou.mes.service1.pojo.dto.BoxSummary;
 import com.tongzhou.mes.service1.pojo.dto.OptimizingFileSummary;
@@ -65,6 +66,7 @@ public class PartQueryServiceImpl implements PartQueryService {
     private final MesPrepackageOrderMapper prepackageOrderMapper;
     private final MesBoxCodeMapper boxCodeMapper;
     private final MesPackageMapper packageMapper;
+    private final MesWorkReportMapper workReportMapper;
     private final BatchPackagingQueryService batchPackagingQueryService;
     private final ObjectMapper objectMapper;
 
@@ -172,6 +174,16 @@ public class PartQueryServiceImpl implements PartQueryService {
 
         // 2. 组装板件响应
         PartDetailResponse response = toPartDetailResponse(board);
+
+        MesWorkReport latestReport = workReportMapper.selectOne(
+            new LambdaQueryWrapper<MesWorkReport>()
+                .eq(MesWorkReport::getPartCode, board.getPartCode())
+                .orderByDesc(MesWorkReport::getReportTime)
+                .last("LIMIT 1")
+        );
+        if (latestReport != null) {
+            response.setLatestPartStatus(latestReport.getPartStatus());
+        }
 
         // 3. 组装上层实体
         MesPackage packageEntity = null;
