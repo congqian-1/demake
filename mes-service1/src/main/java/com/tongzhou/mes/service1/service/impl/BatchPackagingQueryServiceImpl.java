@@ -301,6 +301,15 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         dto.setBatchNum(batch.getBatchNum());
         dto.setBatchType(batch.getBatchType());
         dto.setProductTime(batch.getProductTime());
+        dto.setNestingTime(batch.getNestingTime());
+        dto.setSimpleBatchNum(batch.getSimpleBatchNum());
+        dto.setYmba014(batch.getYmba014());
+        dto.setYmba016(batch.getYmba016());
+        dto.setIsDeleted(batch.getIsDeleted());
+        dto.setCreatedBy(batch.getCreatedBy());
+        dto.setCreatedTime(batch.getCreatedTime());
+        dto.setUpdatedBy(batch.getUpdatedBy());
+        dto.setUpdatedTime(batch.getUpdatedTime());
         return dto;
     }
 
@@ -308,9 +317,15 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         OptimizingFileDTO dto = new OptimizingFileDTO();
         dto.setId(file.getId());
         dto.setBatchId(file.getBatchId());
+        dto.setBatchNum(file.getBatchNum());
         dto.setOptimizingFileName(file.getOptimizingFileName());
         dto.setStationCode(file.getStationCode());
         dto.setUrgency(file.getUrgency());
+        dto.setIsDeleted(file.getIsDeleted());
+        dto.setCreatedBy(file.getCreatedBy());
+        dto.setCreatedTime(file.getCreatedTime());
+        dto.setUpdatedBy(file.getUpdatedBy());
+        dto.setUpdatedTime(file.getUpdatedTime());
         return dto;
     }
 
@@ -319,10 +334,29 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         dto.setId(workOrder.getId());
         dto.setBatchId(workOrder.getBatchId());
         dto.setOptimizingFileId(workOrder.getOptimizingFileId());
+        dto.setBatchNum(workOrder.getBatchNum());
         dto.setWorkId(workOrder.getWorkId());
         dto.setRoute(workOrder.getRoute());
+        dto.setRouteId(workOrder.getRouteId());
         dto.setOrderType(workOrder.getOrderType());
+        dto.setDeliveryTime(workOrder.getDeliveryTime());
+        dto.setNestingTime(workOrder.getNestingTime());
+        dto.setYmba014(workOrder.getYmba014());
+        dto.setYmba015(workOrder.getYmba015());
+        dto.setYmba016(workOrder.getYmba016());
+        dto.setPart0(workOrder.getPart0());
+        dto.setCondition0(workOrder.getCondition0());
+        dto.setPartTime0(workOrder.getPartTime0());
+        dto.setZuz(workOrder.getZuz());
         dto.setPrepackageStatus(workOrder.getPrepackageStatus());
+        dto.setRetryCount(workOrder.getRetryCount());
+        dto.setLastPullTime(workOrder.getLastPullTime());
+        dto.setErrorMessage(workOrder.getErrorMessage());
+        dto.setIsDeleted(workOrder.getIsDeleted());
+        dto.setCreatedBy(workOrder.getCreatedBy());
+        dto.setCreatedTime(workOrder.getCreatedTime());
+        dto.setUpdatedBy(workOrder.getUpdatedBy());
+        dto.setUpdatedTime(workOrder.getUpdatedTime());
         return dto;
     }
 
@@ -330,10 +364,31 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         PrepackageOrderDTO dto = new PrepackageOrderDTO();
         dto.setId(order.getId());
         dto.setWorkOrderId(order.getWorkOrderId());
+        dto.setBatchId(order.getBatchId());
+        dto.setBatchNum(order.getBatchNum());
+        dto.setWorkId(order.getWorkId());
         dto.setOrderNum(order.getOrderNum());
         dto.setConsignor(order.getConsignor());
+        dto.setContractNo(order.getContractNo());
+        dto.setWorkNum(order.getWorkNum());
         dto.setReceiver(order.getReceiver());
+        dto.setPhone(order.getPhone());
+        dto.setShipBatch(order.getShipBatch());
         dto.setInstallAddress(order.getInstallAddress());
+        dto.setCustomer(order.getCustomer());
+        dto.setReceiveRegion(order.getReceiveRegion());
+        dto.setSpace(order.getSpace());
+        dto.setPackType(order.getPackType());
+        dto.setProductType(order.getProductType());
+        dto.setPrepackageInfoSize(order.getPrepackageInfoSize());
+        dto.setTotalSet(order.getTotalSet());
+        dto.setMaxPackageNo(order.getMaxPackageNo());
+        dto.setProductionNum(order.getProductionNum());
+        dto.setIsDeleted(order.getIsDeleted());
+        dto.setCreatedBy(order.getCreatedBy());
+        dto.setCreatedTime(order.getCreatedTime());
+        dto.setUpdatedBy(order.getUpdatedBy());
+        dto.setUpdatedTime(order.getUpdatedTime());
         return dto;
     }
 
@@ -341,10 +396,19 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         BoxDTO dto = new BoxDTO();
         dto.setId(box.getId());
         dto.setPrepackageOrderId(box.getPrepackageOrderId());
+        dto.setBatchNum(box.getBatchNum());
+        dto.setWorkId(box.getWorkId());
         dto.setBoxCode(box.getBoxCode());
         dto.setBuilding(box.getBuilding());
         dto.setHouse(box.getHouse());
         dto.setRoom(box.getRoom());
+        dto.setSetno(box.getSetno());
+        dto.setColor(box.getColor());
+        dto.setIsDeleted(box.getIsDeleted());
+        dto.setCreatedBy(box.getCreatedBy());
+        dto.setCreatedTime(box.getCreatedTime());
+        dto.setUpdatedBy(box.getUpdatedBy());
+        dto.setUpdatedTime(box.getUpdatedTime());
         return dto;
     }
 
@@ -352,12 +416,21 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         PackageDTO dto = new PackageDTO();
         dto.setId(pkg.getId());
         dto.setBoxId(pkg.getBoxId());
+        dto.setBatchNum(pkg.getBatchNum());
+        dto.setWorkId(pkg.getWorkId());
+        dto.setBoxCode(pkg.getBoxCode());
         dto.setPackageNo(pkg.getPackageNo());
         dto.setLength(pkg.getLength());
         dto.setWidth(pkg.getWidth());
         dto.setDepth(pkg.getDepth());
         dto.setWeight(pkg.getWeight());
+        dto.setPartCount(pkg.getPartCount());
         dto.setBoxType(pkg.getBoxType());
+        dto.setIsDeleted(pkg.getIsDeleted());
+        dto.setCreatedBy(pkg.getCreatedBy());
+        dto.setCreatedTime(pkg.getCreatedTime());
+        dto.setUpdatedBy(pkg.getUpdatedBy());
+        dto.setUpdatedTime(pkg.getUpdatedTime());
         return dto;
     }
 
@@ -365,10 +438,14 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         PartDTO dto = new PartDTO();
         dto.setId(part.getId());
         dto.setPackageId(part.getPackageId());
+        dto.setBoxId(part.getBoxId());
+        dto.setBatchNum(part.getBatchNum());
+        dto.setWorkId(part.getWorkId());
         dto.setPartCode(part.getPartCode());
         dto.setLayer(part.getLayer());
         dto.setPiece(part.getPiece());
         dto.setItemCode(part.getItemCode());
+        dto.setItemName(part.getItemName());
         dto.setMatName(part.getMatName());
         dto.setItemLength(part.getItemLength());
         dto.setItemWidth(part.getItemWidth());
@@ -379,16 +456,28 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         dto.setSortOrder(part.getSortOrder());
         dto.setStandardList(part.getStandardList());
         dto.setRealPackageNo(part.getRealPackageNo());
+        dto.setIsDeleted(part.getIsDeleted());
+        dto.setCreatedBy(part.getCreatedBy());
+        dto.setCreatedTime(part.getCreatedTime());
+        dto.setUpdatedBy(part.getUpdatedBy());
+        dto.setUpdatedTime(part.getUpdatedTime());
         return dto;
     }
 
     private WorkReportDTO toWorkReportDTO(MesWorkReport report) {
         WorkReportDTO dto = new WorkReportDTO();
         dto.setId(report.getId());
+        dto.setWorkId(report.getWorkId());
         dto.setPartCode(report.getPartCode());
         dto.setPartStatus(report.getPartStatus());
         dto.setStationCode(report.getStationCode());
+        dto.setStationName(report.getStationName());
         dto.setReportTime(report.getReportTime());
+        dto.setIsDeleted(report.getIsDeleted());
+        dto.setCreatedBy(report.getCreatedBy());
+        dto.setCreatedTime(report.getCreatedTime());
+        dto.setUpdatedBy(report.getUpdatedBy());
+        dto.setUpdatedTime(report.getUpdatedTime());
         return dto;
     }
 }

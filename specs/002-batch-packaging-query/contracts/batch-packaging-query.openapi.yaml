@@ -116,15 +116,30 @@ components:
         batchNum: { type: string }
         batchType: { type: integer, format: int32 }
         productTime: { type: string, format: date }
+        nestingTime: { type: string, format: date-time }
+        simpleBatchNum: { type: string }
+        ymba014: { type: string }
+        ymba016: { type: string }
+        isDeleted: { type: integer, format: int32 }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
       required: [id, batchNum]
     OptimizingFile:
       type: object
       properties:
         id: { type: integer, format: int64 }
         batchId: { type: integer, format: int64 }
+        batchNum: { type: string }
         optimizingFileName: { type: string }
         stationCode: { type: string }
         urgency: { type: integer, format: int32 }
+        isDeleted: { type: integer, format: int32 }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
         workOrders:
           type: array
           items:
@@ -136,10 +151,29 @@ components:
         id: { type: integer, format: int64 }
         batchId: { type: integer, format: int64 }
         optimizingFileId: { type: integer, format: int64, nullable: true }
+        batchNum: { type: string }
         workId: { type: string }
         route: { type: string }
+        routeId: { type: string }
         orderType: { type: string }
-        prepackageStatus: { type: integer, format: int32 }
+        deliveryTime: { type: string, format: date-time }
+        nestingTime: { type: string, format: date-time }
+        ymba014: { type: string }
+        ymba015: { type: string }
+        ymba016: { type: string }
+        part0: { type: string }
+        condition0: { type: string }
+        partTime0: { type: string, format: date-time }
+        zuz: { type: integer, format: int32 }
+        prepackageStatus: { type: string }
+        retryCount: { type: integer, format: int32 }
+        lastPullTime: { type: string, format: date-time }
+        errorMessage: { type: string }
+        isDeleted: { type: integer, format: int32 }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
         prepackageOrder:
           $ref: '#/components/schemas/PrepackageOrder'
       required: [id, batchId, workId]
@@ -148,10 +182,31 @@ components:
       properties:
         id: { type: integer, format: int64 }
         workOrderId: { type: integer, format: int64 }
+        batchId: { type: integer, format: int64 }
+        batchNum: { type: string }
+        workId: { type: string }
         orderNum: { type: string }
         consignor: { type: string }
+        contractNo: { type: string }
+        workNum: { type: string }
         receiver: { type: string }
+        phone: { type: string }
+        shipBatch: { type: string }
         installAddress: { type: string }
+        customer: { type: string }
+        receiveRegion: { type: string }
+        space: { type: string }
+        packType: { type: string }
+        productType: { type: string }
+        prepackageInfoSize: { type: integer, format: int32 }
+        totalSet: { type: integer, format: int32 }
+        maxPackageNo: { type: integer, format: int32 }
+        productionNum: { type: string }
+        isDeleted: { type: integer, format: int32 }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
         boxes:
           type: array
           items:
@@ -162,10 +217,19 @@ components:
       properties:
         id: { type: integer, format: int64 }
         prepackageOrderId: { type: integer, format: int64 }
+        batchNum: { type: string }
+        workId: { type: string }
         boxCode: { type: string }
         building: { type: string }
         house: { type: string }
         room: { type: string }
+        setno: { type: integer, format: int32 }
+        color: { type: string }
+        isDeleted: { type: integer, format: int32 }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
         packages:
           type: array
           items:
@@ -176,12 +240,21 @@ components:
       properties:
         id: { type: integer, format: int64 }
         boxId: { type: integer, format: int64 }
+        batchNum: { type: string }
+        workId: { type: string }
+        boxCode: { type: string }
         packageNo: { type: integer, format: int32 }
         length: { type: number, format: double }
         width: { type: number, format: double }
         depth: { type: number, format: double }
         weight: { type: number, format: double }
+        partCount: { type: integer, format: int32 }
         boxType: { type: string }
+        isDeleted: { type: integer, format: int32 }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
         parts:
           type: array
           items:
@@ -192,10 +265,14 @@ components:
       properties:
         id: { type: integer, format: int64 }
         packageId: { type: integer, format: int64 }
+        boxId: { type: integer, format: int64 }
+        batchNum: { type: string }
+        workId: { type: string }
         partCode: { type: string }
         layer: { type: integer, format: int32 }
         piece: { type: integer, format: int32 }
         itemCode: { type: string }
+        itemName: { type: string }
         matName: { type: string }
         itemLength: { type: number, format: double }
         itemWidth: { type: number, format: double }
@@ -205,6 +282,12 @@ components:
         zAxis: { type: number, format: double }
         sortOrder: { type: integer, format: int32 }
         standardList: { type: string }
+        realPackageNo: { type: string }
+        isDeleted: { type: integer, format: int32 }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
         workReports:
           type: array
           items:
@@ -214,8 +297,15 @@ components:
       type: object
       properties:
         id: { type: integer, format: int64 }
+        workId: { type: string }
         partCode: { type: string }
         partStatus: { type: string }
         stationCode: { type: string }
+        stationName: { type: string }
         reportTime: { type: string, format: date-time }
+        isDeleted: { type: integer, format: int32 }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
       required: [id, partCode]

@@ -21,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +35,12 @@ public class PartDTO {
     private Long id;
     @Schema(description = "包件ID", example = "3000")
     private Long packageId;
+    @Schema(description = "箱码ID（冗余）", example = "2000")
+    private Long boxId;
+    @Schema(description = "批次号（冗余）", example = "BATCH-001")
+    private String batchNum;
+    @Schema(description = "工单号（冗余）", example = "WO-001")
+    private String workId;
     @Schema(description = "板件码", example = "PART-001")
     private String partCode;
     @Schema(description = "第几层", example = "1")
@@ -42,6 +49,8 @@ public class PartDTO {
     private Integer piece;
     @Schema(description = "板件ID（业务标识）", example = "ITEM-001")
     private String itemCode;
+    @Schema(description = "板件描述")
+    private String itemName;
     @Schema(description = "花色", example = "WHITE")
     private String matName;
     @Schema(description = "板件长")
@@ -62,6 +71,16 @@ public class PartDTO {
     private String standardList;
     @Schema(description = "真实打包包号", example = "PKG-REAL-001")
     private String realPackageNo;
+    @Schema(description = "逻辑删除标识（0-未删除、1-已删除）")
+    private Integer isDeleted;
+    @Schema(description = "创建人")
+    private String createdBy;
+    @Schema(description = "创建时间")
+    private LocalDateTime createdTime;
+    @Schema(description = "更新人")
+    private String updatedBy;
+    @Schema(description = "更新时间")
+    private LocalDateTime updatedTime;
     @Schema(description = "报工记录")
     private List<WorkReportDTO> workReports = new ArrayList<>();
 }

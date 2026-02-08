@@ -30,12 +30,26 @@ import java.time.LocalDateTime;
 public class WorkReportDTO {
     @Schema(description = "报工ID", example = "5000")
     private Long id;
+    @Schema(description = "工单号", example = "WO-001")
+    private String workId;
     @Schema(description = "板件码", example = "PART-001")
     private String partCode;
     @Schema(description = "板件状态", example = "DONE")
     private String partStatus;
     @Schema(description = "工位编码", example = "C1A001")
     private String stationCode;
+    @Schema(description = "工位名称")
+    private String stationName;
     @Schema(description = "报工时间")
     private LocalDateTime reportTime;
+    @Schema(description = "逻辑删除标识（0-未删除、1-已删除）")
+    private Integer isDeleted;
+    @Schema(description = "创建人")
+    private String createdBy;
+    @Schema(description = "创建时间")
+    private LocalDateTime createdTime;
+    @Schema(description = "更新人")
+    private String updatedBy;
+    @Schema(description = "更新时间")
+    private LocalDateTime updatedTime;
 }

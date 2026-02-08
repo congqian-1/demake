@@ -73,32 +73,71 @@ components:
       properties:
         id: { type: integer, format: int64 }
         boxId: { type: integer, format: int64 }
+        batchNum: { type: string }
+        workId: { type: string }
+        boxCode: { type: string }
         packageNo: { type: integer }
         length: { type: number }
         width: { type: number }
         depth: { type: number }
         weight: { type: number }
+        partCount: { type: integer }
         boxType: { type: string }
+        isDeleted: { type: integer }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
     Box:
       type: object
       nullable: true
       properties:
         id: { type: integer, format: int64 }
         prepackageOrderId: { type: integer, format: int64 }
+        batchNum: { type: string }
+        workId: { type: string }
         boxCode: { type: string }
         building: { type: string }
         house: { type: string }
         room: { type: string }
+        setno: { type: integer }
+        color: { type: string }
+        isDeleted: { type: integer }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
     PrepackageOrder:
       type: object
       nullable: true
       properties:
         id: { type: integer, format: int64 }
         workOrderId: { type: integer, format: int64 }
+        batchId: { type: integer, format: int64 }
+        batchNum: { type: string }
+        workId: { type: string }
         orderNum: { type: string }
         consignor: { type: string }
+        contractNo: { type: string }
+        workNum: { type: string }
         receiver: { type: string }
+        phone: { type: string }
+        shipBatch: { type: string }
         installAddress: { type: string }
+        customer: { type: string }
+        receiveRegion: { type: string }
+        space: { type: string }
+        packType: { type: string }
+        productType: { type: string }
+        prepackageInfoSize: { type: integer }
+        totalSet: { type: integer }
+        maxPackageNo: { type: integer }
+        productionNum: { type: string }
+        isDeleted: { type: integer }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
     WorkOrder:
       type: object
       nullable: true
@@ -106,19 +145,44 @@ components:
         id: { type: integer, format: int64 }
         batchId: { type: integer, format: int64 }
         optimizingFileId: { type: integer, format: int64 }
+        batchNum: { type: string }
         workId: { type: string }
         route: { type: string }
+        routeId: { type: string }
         orderType: { type: string }
+        deliveryTime: { type: string, format: date-time }
+        nestingTime: { type: string, format: date-time }
+        ymba014: { type: string }
+        ymba015: { type: string }
+        ymba016: { type: string }
+        part0: { type: string }
+        condition0: { type: string }
+        partTime0: { type: string, format: date-time }
+        zuz: { type: integer }
         prepackageStatus: { type: string }
+        retryCount: { type: integer }
+        lastPullTime: { type: string, format: date-time }
+        errorMessage: { type: string }
+        isDeleted: { type: integer }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
     OptimizingFile:
       type: object
       nullable: true
       properties:
         id: { type: integer, format: int64 }
         batchId: { type: integer, format: int64 }
+        batchNum: { type: string }
         optimizingFileName: { type: string }
         stationCode: { type: string }
         urgency: { type: integer }
+        isDeleted: { type: integer }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }
     Batch:
       type: object
       nullable: true
@@ -127,3 +191,12 @@ components:
         batchNum: { type: string }
         batchType: { type: integer }
         productTime: { type: string, format: date-time }
+        nestingTime: { type: string, format: date-time }
+        simpleBatchNum: { type: string }
+        ymba014: { type: string }
+        ymba016: { type: string }
+        isDeleted: { type: integer }
+        createdBy: { type: string }
+        createdTime: { type: string, format: date-time }
+        updatedBy: { type: string }
+        updatedTime: { type: string, format: date-time }

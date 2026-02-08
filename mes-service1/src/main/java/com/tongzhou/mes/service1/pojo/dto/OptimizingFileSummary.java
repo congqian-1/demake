@@ -20,6 +20,8 @@ package com.tongzhou.mes.service1.pojo.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 @Schema(description = "优化文件信息")
 public class OptimizingFileSummary {
@@ -30,6 +32,9 @@ public class OptimizingFileSummary {
     @Schema(description = "批次ID", example = "1")
     private Long batchId;
 
+    @Schema(description = "批次号（冗余）")
+    private String batchNum;
+
     @Schema(description = "优化文件名称", example = "OPT-BATCH-001.txt")
     private String optimizingFileName;
 
@@ -38,4 +43,19 @@ public class OptimizingFileSummary {
 
     @Schema(description = "紧急程度", example = "0")
     private Integer urgency;
+
+    @Schema(description = "逻辑删除标识（0-未删除、1-已删除）")
+    private Integer isDeleted;
+
+    @Schema(description = "创建人")
+    private String createdBy;
+
+    @Schema(description = "创建时间")
+    private LocalDateTime createdTime;
+
+    @Schema(description = "更新人")
+    private String updatedBy;
+
+    @Schema(description = "更新时间")
+    private LocalDateTime updatedTime;
 }

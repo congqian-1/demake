@@ -304,12 +304,21 @@ public class PartQueryServiceImpl implements PartQueryService {
         PackageSummary summary = new PackageSummary();
         summary.setId(pkg.getId());
         summary.setBoxId(pkg.getBoxId());
+        summary.setBatchNum(pkg.getBatchNum());
+        summary.setWorkId(pkg.getWorkId());
+        summary.setBoxCode(pkg.getBoxCode());
         summary.setPackageNo(pkg.getPackageNo());
         summary.setLength(pkg.getLength());
         summary.setWidth(pkg.getWidth());
         summary.setDepth(pkg.getDepth());
         summary.setWeight(pkg.getWeight());
+        summary.setPartCount(pkg.getPartCount());
         summary.setBoxType(pkg.getBoxType());
+        summary.setIsDeleted(pkg.getIsDeleted());
+        summary.setCreatedBy(pkg.getCreatedBy());
+        summary.setCreatedTime(pkg.getCreatedTime());
+        summary.setUpdatedBy(pkg.getUpdatedBy());
+        summary.setUpdatedTime(pkg.getUpdatedTime());
         return summary;
     }
 
@@ -317,10 +326,19 @@ public class PartQueryServiceImpl implements PartQueryService {
         BoxSummary summary = new BoxSummary();
         summary.setId(box.getId());
         summary.setPrepackageOrderId(box.getPrepackageOrderId());
+        summary.setBatchNum(box.getBatchNum());
+        summary.setWorkId(box.getWorkId());
         summary.setBoxCode(box.getBoxCode());
         summary.setBuilding(box.getBuilding());
         summary.setHouse(box.getHouse());
         summary.setRoom(box.getRoom());
+        summary.setSetno(box.getSetno());
+        summary.setColor(box.getColor());
+        summary.setIsDeleted(box.getIsDeleted());
+        summary.setCreatedBy(box.getCreatedBy());
+        summary.setCreatedTime(box.getCreatedTime());
+        summary.setUpdatedBy(box.getUpdatedBy());
+        summary.setUpdatedTime(box.getUpdatedTime());
         return summary;
     }
 
@@ -328,10 +346,31 @@ public class PartQueryServiceImpl implements PartQueryService {
         PrepackageOrderSummary summary = new PrepackageOrderSummary();
         summary.setId(order.getId());
         summary.setWorkOrderId(order.getWorkOrderId());
+        summary.setBatchId(order.getBatchId());
+        summary.setBatchNum(order.getBatchNum());
+        summary.setWorkId(order.getWorkId());
         summary.setOrderNum(order.getOrderNum());
         summary.setConsignor(order.getConsignor());
+        summary.setContractNo(order.getContractNo());
+        summary.setWorkNum(order.getWorkNum());
         summary.setReceiver(order.getReceiver());
+        summary.setPhone(order.getPhone());
+        summary.setShipBatch(order.getShipBatch());
         summary.setInstallAddress(order.getInstallAddress());
+        summary.setCustomer(order.getCustomer());
+        summary.setReceiveRegion(order.getReceiveRegion());
+        summary.setSpace(order.getSpace());
+        summary.setPackType(order.getPackType());
+        summary.setProductType(order.getProductType());
+        summary.setPrepackageInfoSize(order.getPrepackageInfoSize());
+        summary.setTotalSet(order.getTotalSet());
+        summary.setMaxPackageNo(order.getMaxPackageNo());
+        summary.setProductionNum(order.getProductionNum());
+        summary.setIsDeleted(order.getIsDeleted());
+        summary.setCreatedBy(order.getCreatedBy());
+        summary.setCreatedTime(order.getCreatedTime());
+        summary.setUpdatedBy(order.getUpdatedBy());
+        summary.setUpdatedTime(order.getUpdatedTime());
         return summary;
     }
 
@@ -340,10 +379,29 @@ public class PartQueryServiceImpl implements PartQueryService {
         summary.setId(workOrder.getId());
         summary.setBatchId(workOrder.getBatchId());
         summary.setOptimizingFileId(workOrder.getOptimizingFileId());
+        summary.setBatchNum(workOrder.getBatchNum());
         summary.setWorkId(workOrder.getWorkId());
         summary.setRoute(workOrder.getRoute());
+        summary.setRouteId(workOrder.getRouteId());
         summary.setOrderType(workOrder.getOrderType());
+        summary.setDeliveryTime(workOrder.getDeliveryTime());
+        summary.setNestingTime(workOrder.getNestingTime());
+        summary.setYmba014(workOrder.getYmba014());
+        summary.setYmba015(workOrder.getYmba015());
+        summary.setYmba016(workOrder.getYmba016());
+        summary.setPart0(workOrder.getPart0());
+        summary.setCondition0(workOrder.getCondition0());
+        summary.setPartTime0(workOrder.getPartTime0());
+        summary.setZuz(workOrder.getZuz());
         summary.setPrepackageStatus(workOrder.getPrepackageStatus());
+        summary.setRetryCount(workOrder.getRetryCount());
+        summary.setLastPullTime(workOrder.getLastPullTime());
+        summary.setErrorMessage(workOrder.getErrorMessage());
+        summary.setIsDeleted(workOrder.getIsDeleted());
+        summary.setCreatedBy(workOrder.getCreatedBy());
+        summary.setCreatedTime(workOrder.getCreatedTime());
+        summary.setUpdatedBy(workOrder.getUpdatedBy());
+        summary.setUpdatedTime(workOrder.getUpdatedTime());
         return summary;
     }
 
@@ -351,9 +409,15 @@ public class PartQueryServiceImpl implements PartQueryService {
         OptimizingFileSummary summary = new OptimizingFileSummary();
         summary.setId(file.getId());
         summary.setBatchId(file.getBatchId());
+        summary.setBatchNum(file.getBatchNum());
         summary.setOptimizingFileName(file.getOptimizingFileName());
         summary.setStationCode(file.getStationCode());
         summary.setUrgency(file.getUrgency());
+        summary.setIsDeleted(file.getIsDeleted());
+        summary.setCreatedBy(file.getCreatedBy());
+        summary.setCreatedTime(file.getCreatedTime());
+        summary.setUpdatedBy(file.getUpdatedBy());
+        summary.setUpdatedTime(file.getUpdatedTime());
         return summary;
     }
 
@@ -363,6 +427,15 @@ public class PartQueryServiceImpl implements PartQueryService {
         summary.setBatchNum(batch.getBatchNum());
         summary.setBatchType(batch.getBatchType());
         summary.setProductTime(batch.getProductTime());
+        summary.setNestingTime(batch.getNestingTime());
+        summary.setSimpleBatchNum(batch.getSimpleBatchNum());
+        summary.setYmba014(batch.getYmba014());
+        summary.setYmba016(batch.getYmba016());
+        summary.setIsDeleted(batch.getIsDeleted());
+        summary.setCreatedBy(batch.getCreatedBy());
+        summary.setCreatedTime(batch.getCreatedTime());
+        summary.setUpdatedBy(batch.getUpdatedBy());
+        summary.setUpdatedTime(batch.getUpdatedTime());
         return summary;
     }
 }

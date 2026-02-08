@@ -36,4 +36,22 @@ public class BatchDTO {
     private Integer batchType;
     @Schema(description = "生产时间")
     private LocalDateTime productTime;
+    @Schema(description = "开料/排样时间")
+    private LocalDateTime nestingTime;
+    @Schema(description = "简易批次号")
+    private String simpleBatchNum;
+    @Schema(description = "线路/区域信息")
+    private String ymba014;
+    @Schema(description = "属性标识")
+    private String ymba016;
+    @Schema(description = "逻辑删除标识（0-未删除、1-已删除）")
+    private Integer isDeleted;
+    @Schema(description = "创建人")
+    private String createdBy;
+    @Schema(description = "创建时间")
+    private LocalDateTime createdTime;
+    @Schema(description = "更新人")
+    private String updatedBy;
+    @Schema(description = "更新时间")
+    private LocalDateTime updatedTime;
 }

@@ -20,6 +20,8 @@ package com.tongzhou.mes.service1.pojo.dto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 @Data
 @Schema(description = "箱子信息")
 public class BoxSummary {
@@ -29,6 +31,12 @@ public class BoxSummary {
 
     @Schema(description = "预包装订单ID", example = "1000")
     private Long prepackageOrderId;
+
+    @Schema(description = "批次号（冗余）")
+    private String batchNum;
+
+    @Schema(description = "工单号（冗余）")
+    private String workId;
 
     @Schema(description = "箱码", example = "BOX-001")
     private String boxCode;
@@ -41,4 +49,25 @@ public class BoxSummary {
 
     @Schema(description = "房间", example = "101")
     private String room;
+
+    @Schema(description = "第几套")
+    private Integer setno;
+
+    @Schema(description = "颜色")
+    private String color;
+
+    @Schema(description = "逻辑删除标识（0-未删除、1-已删除）")
+    private Integer isDeleted;
+
+    @Schema(description = "创建人")
+    private String createdBy;
+
+    @Schema(description = "创建时间")
+    private LocalDateTime createdTime;
+
+    @Schema(description = "更新人")
+    private String updatedBy;
+
+    @Schema(description = "更新时间")
+    private LocalDateTime updatedTime;
 }
