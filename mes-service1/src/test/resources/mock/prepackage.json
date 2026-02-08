@@ -17,6 +17,11 @@
     "TotalSet": 1,
     "MaxPackageNo": 2,
     "ProductionNum": "PROD-TEMPLATE",
+    "isProject": 1,
+    "customerName": "Mock CustomerName",
+    "FNUMBER": "FNUMBER-TEMPLATE",
+    "dob": "DOB-TEMPLATE",
+    "detailedAddress": "Mock Detailed Address",
     "BoxInfoDetails": [
       {
         "BoxCode": "BOX-TEMPLATE-1",
@@ -25,6 +30,7 @@
         "Room": "101",
         "Setno": 1,
         "Color": "White",
+        "Unit": "UNIT-1",
         "PackageInfos": [
           {
             "PackageNo": 1,
@@ -34,6 +40,7 @@
             "Weight": 20,
             "PartCount": 2,
             "BoxType": "地盖",
+            "BoxType2": "0410",
             "PartInfos": [
               {
                 "PartCode": "PART-TEMPLATE-1",
@@ -49,6 +56,7 @@
                 "YAxis": 2,
                 "ZAxis": 3,
                 "SortOrder": 1,
+                "StandardCode": "STD-A",
                 "StandardList": "[\"STD-A\"]"
               },
               {
@@ -65,6 +73,7 @@
                 "YAxis": 5,
                 "ZAxis": 6,
                 "SortOrder": 2,
+                "StandardCode": "STD-B",
                 "StandardList": "[\"STD-B\"]"
               }
             ]
@@ -78,6 +87,7 @@
         "Room": "102",
         "Setno": 1,
         "Color": "Gray",
+        "Unit": "UNIT-2",
         "PackageInfos": [
           {
             "PackageNo": 2,
@@ -87,6 +97,7 @@
             "Weight": 18,
             "PartCount": 1,
             "BoxType": "天地盖",
+            "BoxType2": "0910",
             "PartInfos": [
               {
                 "PartCode": "PART-TEMPLATE-3",
@@ -102,6 +113,7 @@
                 "YAxis": 8,
                 "ZAxis": 9,
                 "SortOrder": 3,
+                "StandardCode": "STD-C",
                 "StandardList": "[\"STD-C\"]"
               }
             ]

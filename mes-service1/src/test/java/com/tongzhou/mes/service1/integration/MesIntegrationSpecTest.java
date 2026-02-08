@@ -242,6 +242,11 @@ class MesIntegrationSpecTest {
         assertEquals(1, order.getTotalSet());
         assertEquals(2, order.getMaxPackageNo());
         assertEquals("PROD-" + batchNum + "-" + workId, order.getProductionNum());
+        assertEquals(1, order.getIsProject());
+        assertEquals("Mock CustomerName", order.getCustomerName());
+        assertEquals("FNUMBER-TEMPLATE", order.getFnumber());
+        assertEquals("DOB-TEMPLATE", order.getDob());
+        assertEquals("Mock Detailed Address", order.getDetailedAddress());
 
         List<com.tongzhou.mes.service1.pojo.entity.MesBoxCode> boxes = boxCodeMapper.selectList(
             new LambdaQueryWrapper<com.tongzhou.mes.service1.pojo.entity.MesBoxCode>()
@@ -256,6 +261,7 @@ class MesIntegrationSpecTest {
         assertEquals("101", box1.getRoom());
         assertEquals(1, box1.getSetno());
         assertEquals("White", box1.getColor());
+        assertEquals("UNIT-1", box1.getUnit());
         assertEquals(0, box1.getIsDeleted());
         assertEquals(batchNum + "-" + workId + "-BOX-2", box2.getBoxCode());
         assertEquals("1", box2.getBuilding());
@@ -263,6 +269,7 @@ class MesIntegrationSpecTest {
         assertEquals("102", box2.getRoom());
         assertEquals(1, box2.getSetno());
         assertEquals("Gray", box2.getColor());
+        assertEquals("UNIT-2", box2.getUnit());
         assertEquals(0, box2.getIsDeleted());
 
         List<com.tongzhou.mes.service1.pojo.entity.MesPackage> packages = packageMapper.selectList(
@@ -274,6 +281,7 @@ class MesIntegrationSpecTest {
         com.tongzhou.mes.service1.pojo.entity.MesPackage pkg2 = packages.get(1);
         assertEquals(1, pkg1.getPackageNo());
         assertEquals("地盖", pkg1.getBoxType());
+        assertEquals("0410", pkg1.getBoxType2());
         assertEquals(2, pkg1.getPartCount());
         assertNotNull(pkg1.getLength());
         assertNotNull(pkg1.getWidth());
@@ -282,6 +290,7 @@ class MesIntegrationSpecTest {
         assertEquals(0, pkg1.getIsDeleted());
         assertEquals(2, pkg2.getPackageNo());
         assertEquals("天地盖", pkg2.getBoxType());
+        assertEquals("0910", pkg2.getBoxType2());
         assertEquals(1, pkg2.getPartCount());
         assertNotNull(pkg2.getLength());
         assertNotNull(pkg2.getWidth());
@@ -308,6 +317,7 @@ class MesIntegrationSpecTest {
         assertNotNull(board);
         assertNotNull(board.getStandardList());
         assertTrue(board.getStandardList().contains("STD"));
+        assertNotNull(board.getStandardCode());
         assertNotNull(board.getItemCode());
         assertNotNull(board.getItemName());
         assertNotNull(board.getMatName());
