@@ -91,6 +91,9 @@ public class PartDetailResponse {
     @Schema(description = "分拣顺序")
     private Integer sortOrder;
 
+    @Schema(description = "标准码")
+    private String standardCode;
+
     @Schema(description = "标准码列表（解析后的Map列表）")
     private List<Map<String, Integer>> standardList;
 

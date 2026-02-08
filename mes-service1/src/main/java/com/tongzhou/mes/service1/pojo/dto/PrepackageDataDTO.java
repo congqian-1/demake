@@ -95,6 +95,21 @@ public class PrepackageDataDTO {
         @JsonProperty("ProductionNum")
         private String productionNum; // 生产编号
 
+        @JsonProperty("isProject")
+        private Integer isProject; // 是否项目
+
+        @JsonProperty("customerName")
+        private String customerName; // 客户名称
+
+        @JsonProperty("FNUMBER")
+        private String fnumber; // FNUMBER
+
+        @JsonProperty("dob")
+        private String dob; // DOB
+
+        @JsonProperty("detailedAddress")
+        private String detailedAddress; // 详细地址
+
         @JsonProperty("BoxInfoDetails")
         private List<BoxInfoDetail> boxInfoDetails; // 箱码详情列表
     }
@@ -123,6 +138,9 @@ public class PrepackageDataDTO {
 
         @JsonProperty("Color")
         private String color; // 颜色
+
+        @JsonProperty("Unit")
+        private String unit; // 单元
 
         @JsonProperty("PackageInfos")
         private List<PackageInfo> packageInfos; // 包件信息列表
@@ -155,6 +173,9 @@ public class PrepackageDataDTO {
 
         @JsonProperty("BoxType")
         private String boxType; // 纸箱类型（如"地盖"）
+
+        @JsonProperty("BoxType2")
+        private String boxType2; // 纸箱类型（二级）
 
         @JsonProperty("PartInfos")
         private List<PartInfo> partInfos; // 板件信息列表
@@ -205,6 +226,9 @@ public class PrepackageDataDTO {
 
         @JsonProperty("SortOrder")
         private Integer sortOrder; // 分拣出板顺序
+
+        @JsonProperty("StandardCode")
+        private String standardCode; // 标准码
 
         @JsonProperty("StandardList")
         private String standardListJson; // 标准码集合（JSON格式）

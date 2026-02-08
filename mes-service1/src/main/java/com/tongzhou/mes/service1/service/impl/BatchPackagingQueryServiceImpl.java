@@ -376,6 +376,7 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         dto.setShipBatch(order.getShipBatch());
         dto.setInstallAddress(order.getInstallAddress());
         dto.setCustomer(order.getCustomer());
+        dto.setCustomerName(order.getCustomerName());
         dto.setReceiveRegion(order.getReceiveRegion());
         dto.setSpace(order.getSpace());
         dto.setPackType(order.getPackType());
@@ -384,6 +385,10 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         dto.setTotalSet(order.getTotalSet());
         dto.setMaxPackageNo(order.getMaxPackageNo());
         dto.setProductionNum(order.getProductionNum());
+        dto.setIsProject(order.getIsProject());
+        dto.setFnumber(order.getFnumber());
+        dto.setDob(order.getDob());
+        dto.setDetailedAddress(order.getDetailedAddress());
         dto.setIsDeleted(order.getIsDeleted());
         dto.setCreatedBy(order.getCreatedBy());
         dto.setCreatedTime(order.getCreatedTime());
@@ -404,6 +409,7 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         dto.setRoom(box.getRoom());
         dto.setSetno(box.getSetno());
         dto.setColor(box.getColor());
+        dto.setUnit(box.getUnit());
         dto.setIsDeleted(box.getIsDeleted());
         dto.setCreatedBy(box.getCreatedBy());
         dto.setCreatedTime(box.getCreatedTime());
@@ -426,6 +432,7 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         dto.setWeight(pkg.getWeight());
         dto.setPartCount(pkg.getPartCount());
         dto.setBoxType(pkg.getBoxType());
+        dto.setBoxType2(pkg.getBoxType2());
         dto.setIsDeleted(pkg.getIsDeleted());
         dto.setCreatedBy(pkg.getCreatedBy());
         dto.setCreatedTime(pkg.getCreatedTime());
@@ -454,6 +461,7 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         dto.setYAxis(part.getYAxis());
         dto.setZAxis(part.getZAxis());
         dto.setSortOrder(part.getSortOrder());
+        dto.setStandardCode(part.getStandardCode());
         dto.setStandardList(part.getStandardList());
         dto.setRealPackageNo(part.getRealPackageNo());
         dto.setIsDeleted(part.getIsDeleted());

@@ -143,6 +143,31 @@ public class MesPrepackageOrder {
     private String productionNum;
 
     /**
+     * 是否项目
+     */
+    private Integer isProject;
+
+    /**
+     * 客户名称
+     */
+    private String customerName;
+
+    /**
+     * FNUMBER
+     */
+    private String fnumber;
+
+    /**
+     * DOB
+     */
+    private String dob;
+
+    /**
+     * 详细地址
+     */
+    private String detailedAddress;
+
+    /**
      * 逻辑删除标识（0-未删除、1-已删除）
      */
     @TableLogic

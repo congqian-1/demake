@@ -273,6 +273,7 @@ public class PartQueryServiceImpl implements PartQueryService {
         response.setYAxis(board.getYAxis());
         response.setZAxis(board.getZAxis());
         response.setSortOrder(board.getSortOrder());
+        response.setStandardCode(board.getStandardCode());
         response.setRealPackageNo(board.getRealPackageNo());
         response.setIsDeleted(board.getIsDeleted());
         response.setCreatedTime(board.getCreatedTime());
@@ -314,6 +315,7 @@ public class PartQueryServiceImpl implements PartQueryService {
         summary.setWeight(pkg.getWeight());
         summary.setPartCount(pkg.getPartCount());
         summary.setBoxType(pkg.getBoxType());
+        summary.setBoxType2(pkg.getBoxType2());
         summary.setIsDeleted(pkg.getIsDeleted());
         summary.setCreatedBy(pkg.getCreatedBy());
         summary.setCreatedTime(pkg.getCreatedTime());
@@ -334,6 +336,7 @@ public class PartQueryServiceImpl implements PartQueryService {
         summary.setRoom(box.getRoom());
         summary.setSetno(box.getSetno());
         summary.setColor(box.getColor());
+        summary.setUnit(box.getUnit());
         summary.setIsDeleted(box.getIsDeleted());
         summary.setCreatedBy(box.getCreatedBy());
         summary.setCreatedTime(box.getCreatedTime());
@@ -358,6 +361,7 @@ public class PartQueryServiceImpl implements PartQueryService {
         summary.setShipBatch(order.getShipBatch());
         summary.setInstallAddress(order.getInstallAddress());
         summary.setCustomer(order.getCustomer());
+        summary.setCustomerName(order.getCustomerName());
         summary.setReceiveRegion(order.getReceiveRegion());
         summary.setSpace(order.getSpace());
         summary.setPackType(order.getPackType());
@@ -366,6 +370,10 @@ public class PartQueryServiceImpl implements PartQueryService {
         summary.setTotalSet(order.getTotalSet());
         summary.setMaxPackageNo(order.getMaxPackageNo());
         summary.setProductionNum(order.getProductionNum());
+        summary.setIsProject(order.getIsProject());
+        summary.setFnumber(order.getFnumber());
+        summary.setDob(order.getDob());
+        summary.setDetailedAddress(order.getDetailedAddress());
         summary.setIsDeleted(order.getIsDeleted());
         summary.setCreatedBy(order.getCreatedBy());
         summary.setCreatedTime(order.getCreatedTime());

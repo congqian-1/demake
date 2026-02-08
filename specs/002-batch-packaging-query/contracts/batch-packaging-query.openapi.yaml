@@ -202,6 +202,11 @@ components:
         totalSet: { type: integer, format: int32 }
         maxPackageNo: { type: integer, format: int32 }
         productionNum: { type: string }
+        isProject: { type: integer, format: int32 }
+        customerName: { type: string }
+        fnumber: { type: string }
+        dob: { type: string }
+        detailedAddress: { type: string }
         isDeleted: { type: integer, format: int32 }
         createdBy: { type: string }
         createdTime: { type: string, format: date-time }
@@ -225,6 +230,7 @@ components:
         room: { type: string }
         setno: { type: integer, format: int32 }
         color: { type: string }
+        unit: { type: string }
         isDeleted: { type: integer, format: int32 }
         createdBy: { type: string }
         createdTime: { type: string, format: date-time }
@@ -250,6 +256,7 @@ components:
         weight: { type: number, format: double }
         partCount: { type: integer, format: int32 }
         boxType: { type: string }
+        boxType2: { type: string }
         isDeleted: { type: integer, format: int32 }
         createdBy: { type: string }
         createdTime: { type: string, format: date-time }
@@ -281,6 +288,7 @@ components:
         yAxis: { type: number, format: double }
         zAxis: { type: number, format: double }
         sortOrder: { type: integer, format: int32 }
+        standardCode: { type: string }
         standardList: { type: string }
         realPackageNo: { type: string }
         isDeleted: { type: integer, format: int32 }

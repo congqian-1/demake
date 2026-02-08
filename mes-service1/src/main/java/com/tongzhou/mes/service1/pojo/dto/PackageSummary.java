@@ -63,6 +63,9 @@ public class PackageSummary {
     @Schema(description = "箱型", example = "A")
     private String boxType;
 
+    @Schema(description = "箱型（二级）")
+    private String boxType2;
+
     @Schema(description = "逻辑删除标识（0-未删除、1-已删除）")
     private Integer isDeleted;
 

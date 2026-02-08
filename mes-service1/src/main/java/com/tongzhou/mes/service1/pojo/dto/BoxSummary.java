@@ -56,6 +56,9 @@ public class BoxSummary {
     @Schema(description = "颜色")
     private String color;
 
+    @Schema(description = "单元")
+    private String unit;
+
     @Schema(description = "逻辑删除标识（0-未删除、1-已删除）")
     private Integer isDeleted;
 

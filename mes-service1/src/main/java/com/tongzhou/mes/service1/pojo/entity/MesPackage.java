@@ -94,6 +94,11 @@ public class MesPackage {
     private String boxType;
 
     /**
+     * 纸箱类型（二级）
+     */
+    private String boxType2;
+
+    /**
      * 逻辑删除标识（0-未删除、1-已删除）
      */
     @TableLogic

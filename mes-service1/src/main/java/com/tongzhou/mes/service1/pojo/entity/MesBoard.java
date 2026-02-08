@@ -129,6 +129,11 @@ public class MesBoard {
     private String standardList;
 
     /**
+     * 标准码
+     */
+    private String standardCode;
+
+    /**
      * 真实打包包号
      */
     private String realPackageNo;

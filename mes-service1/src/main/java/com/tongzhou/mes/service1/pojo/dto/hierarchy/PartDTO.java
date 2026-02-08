@@ -67,6 +67,8 @@ public class PartDTO {
     private BigDecimal zAxis;
     @Schema(description = "分拣顺序")
     private Integer sortOrder;
+    @Schema(description = "标准码")
+    private String standardCode;
     @Schema(description = "标准码原始JSON")
     private String standardList;
     @Schema(description = "真实打包包号", example = "PKG-REAL-001")

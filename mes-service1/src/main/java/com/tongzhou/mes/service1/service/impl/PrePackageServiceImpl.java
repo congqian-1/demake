@@ -317,6 +317,11 @@ public class PrePackageServiceImpl implements PrePackageService {
         order.setTotalSet(info.getTotalSet());
         order.setMaxPackageNo(info.getMaxPackageNo());
         order.setProductionNum(info.getProductionNum());
+        order.setIsProject(info.getIsProject());
+        order.setCustomerName(info.getCustomerName());
+        order.setFnumber(info.getFnumber());
+        order.setDob(info.getDob());
+        order.setDetailedAddress(info.getDetailedAddress());
 
         prepackageOrderMapper.insert(order);
         Long orderId = order.getId();
@@ -336,6 +341,7 @@ public class PrePackageServiceImpl implements PrePackageService {
                 box.setRoom(boxInfo.getRoom());
                 box.setSetno(boxInfo.getSetno());
                 box.setColor(boxInfo.getColor());
+                box.setUnit(boxInfo.getUnit());
 
                 boxCodeMapper.insert(box);
                 Long boxId = box.getId();
@@ -357,6 +363,7 @@ public class PrePackageServiceImpl implements PrePackageService {
                         pkg.setWeight(packageInfo.getWeight());
                         pkg.setPartCount(packageInfo.getPartCount());
                         pkg.setBoxType(packageInfo.getBoxType());
+                        pkg.setBoxType2(packageInfo.getBoxType2());
 
                         packageMapper.insert(pkg);
                         Long packageId = pkg.getId();
@@ -390,6 +397,7 @@ public class PrePackageServiceImpl implements PrePackageService {
                                 board.setYAxis(partInfo.getYAxis());
                                 board.setZAxis(partInfo.getZAxis());
                                 board.setSortOrder(partInfo.getSortOrder());
+                                board.setStandardCode(partInfo.getStandardCode());
                                 board.setStandardList(partInfo.getStandardListJson());
                                 board.setIsDeleted(0);
                                 board.setUpdatedTime(LocalDateTime.now());

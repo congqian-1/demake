@@ -83,6 +83,11 @@ public class MesBoxCode {
     private String color;
 
     /**
+     * 单元
+     */
+    private String unit;
+
+    /**
      * 逻辑删除标识（0-未删除、1-已删除）
      */
     @TableLogic

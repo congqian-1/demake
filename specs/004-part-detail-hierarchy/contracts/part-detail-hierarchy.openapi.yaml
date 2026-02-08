@@ -46,6 +46,7 @@ components:
         yAxis: { type: number }
         zAxis: { type: number }
         sortOrder: { type: integer }
+        standardCode: { type: string }
         standardList: { type: array, items: { type: object } }
         standardListRaw: { type: string }
         realPackageNo: { type: string }
@@ -83,6 +84,7 @@ components:
         weight: { type: number }
         partCount: { type: integer }
         boxType: { type: string }
+        boxType2: { type: string }
         isDeleted: { type: integer }
         createdBy: { type: string }
         createdTime: { type: string, format: date-time }
@@ -102,6 +104,7 @@ components:
         room: { type: string }
         setno: { type: integer }
         color: { type: string }
+        unit: { type: string }
         isDeleted: { type: integer }
         createdBy: { type: string }
         createdTime: { type: string, format: date-time }
@@ -133,6 +136,11 @@ components:
         totalSet: { type: integer }
         maxPackageNo: { type: integer }
         productionNum: { type: string }
+        isProject: { type: integer }
+        customerName: { type: string }
+        fnumber: { type: string }
+        dob: { type: string }
+        detailedAddress: { type: string }
         isDeleted: { type: integer }
         createdBy: { type: string }
         createdTime: { type: string, format: date-time }

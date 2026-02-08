@@ -74,6 +74,16 @@ public class PrepackageOrderDTO {
     private Integer maxPackageNo;
     @Schema(description = "生产编号")
     private String productionNum;
+    @Schema(description = "是否项目")
+    private Integer isProject;
+    @Schema(description = "客户名称")
+    private String customerName;
+    @Schema(description = "FNUMBER")
+    private String fnumber;
+    @Schema(description = "DOB")
+    private String dob;
+    @Schema(description = "详细地址")
+    private String detailedAddress;
     @Schema(description = "逻辑删除标识（0-未删除、1-已删除）")
     private Integer isDeleted;
     @Schema(description = "创建人")

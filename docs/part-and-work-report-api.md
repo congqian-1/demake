@@ -194,6 +194,11 @@ curl -X GET "/api/v1/production/part/PART-001/work-order-and-batch"
 | totalSet | integer | 总套数 |
 | maxPackageNo | integer | 一套内总包数 |
 | productionNum | string | 生产编号 |
+| isProject | integer | 是否项目 |
+| customerName | string | 客户名称 |
+| fnumber | string | FNUMBER |
+| dob | string | DOB |
+| detailedAddress | string | 详细地址 |
 | isDeleted | integer | 逻辑删除标识 |
 | createdBy | string | 创建人 |
 | createdTime | string | 创建时间 |
@@ -213,6 +218,7 @@ curl -X GET "/api/v1/production/part/PART-001/work-order-and-batch"
 | room | string | 房间 |
 | setno | integer | 第几套 |
 | color | string | 颜色 |
+| unit | string | 单元 |
 | isDeleted | integer | 逻辑删除标识 |
 | createdBy | string | 创建人 |
 | createdTime | string | 创建时间 |
@@ -234,6 +240,7 @@ curl -X GET "/api/v1/production/part/PART-001/work-order-and-batch"
 | weight | number | 重量 |
 | partCount | integer | 部件数 |
 | boxType | string | 箱型 |
+| boxType2 | string | 箱型（二级） |
 | isDeleted | integer | 逻辑删除标识 |
 | createdBy | string | 创建人 |
 | createdTime | string | 创建时间 |
@@ -261,6 +268,7 @@ curl -X GET "/api/v1/production/part/PART-001/work-order-and-batch"
 | yAxis | number | Y轴 |
 | zAxis | number | Z轴 |
 | sortOrder | integer | 分拣顺序 |
+| standardCode | string | 标准码 |
 | standardList | string | 标准码原始JSON |
 | realPackageNo | string | 真实打包包号 |
 | isDeleted | integer | 逻辑删除标识 |
@@ -507,6 +515,11 @@ curl -X GET "/api/v1/production/part/PART-001/package"
 | totalSet | integer | 总套数 |
 | maxPackageNo | integer | 一套内总包数 |
 | productionNum | string | 生产编号 |
+| isProject | integer | 是否项目 |
+| customerName | string | 客户名称 |
+| fnumber | string | FNUMBER |
+| dob | string | DOB |
+| detailedAddress | string | 详细地址 |
 | isDeleted | integer | 逻辑删除标识 |
 | createdBy | string | 创建人 |
 | createdTime | string | 创建时间 |
@@ -526,6 +539,7 @@ curl -X GET "/api/v1/production/part/PART-001/package"
 | room | string | 房间 |
 | setno | integer | 第几套 |
 | color | string | 颜色 |
+| unit | string | 单元 |
 | isDeleted | integer | 逻辑删除标识 |
 | createdBy | string | 创建人 |
 | createdTime | string | 创建时间 |
@@ -547,6 +561,7 @@ curl -X GET "/api/v1/production/part/PART-001/package"
 | weight | number | 重量 |
 | partCount | integer | 部件数 |
 | boxType | string | 箱型 |
+| boxType2 | string | 箱型（二级） |
 | isDeleted | integer | 逻辑删除标识 |
 | createdBy | string | 创建人 |
 | createdTime | string | 创建时间 |
@@ -574,6 +589,7 @@ curl -X GET "/api/v1/production/part/PART-001/package"
 | yAxis | number | Y轴 |
 | zAxis | number | Z轴 |
 | sortOrder | integer | 分拣顺序 |
+| standardCode | string | 标准码 |
 | standardList | string | 标准码原始JSON |
 | realPackageNo | string | 真实打包包号 |
 | isDeleted | integer | 逻辑删除标识 |
@@ -762,6 +778,7 @@ curl -X GET "/api/v1/production/part/PART-001/detail"
 | yAxis | number | Y轴坐标 |
 | zAxis | number | Z轴坐标 |
 | sortOrder | integer | 分拣顺序 |
+| standardCode | string | 标准码 |
 | standardList | List<Map> | 标准码列表 |
 | standardListRaw | string | 标准码原始JSON |
 | realPackageNo | string | 真实打包包号 |
@@ -792,6 +809,7 @@ curl -X GET "/api/v1/production/part/PART-001/detail"
 | weight | number | 重量 |
 | partCount | integer | 部件数 |
 | boxType | string | 箱型 |
+| boxType2 | string | 箱型（二级） |
 | isDeleted | integer | 逻辑删除标识 |
 | createdBy | string | 创建人 |
 | createdTime | string | 创建时间 |
@@ -810,6 +828,7 @@ curl -X GET "/api/v1/production/part/PART-001/detail"
 | room | string | 房间 |
 | setno | integer | 第几套 |
 | color | string | 颜色 |
+| unit | string | 单元 |
 | isDeleted | integer | 逻辑删除标识 |
 | createdBy | string | 创建人 |
 | createdTime | string | 创建时间 |
@@ -840,6 +859,11 @@ curl -X GET "/api/v1/production/part/PART-001/detail"
 | totalSet | integer | 总套数 |
 | maxPackageNo | integer | 一套内总包数 |
 | productionNum | string | 生产编号 |
+| isProject | integer | 是否项目 |
+| customerName | string | 客户名称 |
+| fnumber | string | FNUMBER |
+| dob | string | DOB |
+| detailedAddress | string | 详细地址 |
 | isDeleted | integer | 逻辑删除标识 |
 | createdBy | string | 创建人 |
 | createdTime | string | 创建时间 |
