@@ -106,6 +106,9 @@ public class PrePackageServiceImpl implements PrePackageService {
         try {
             // 带重试的拉取
             PrepackageDataDTO data = pullWithRetry(batchNum, workId);
+            if (isRepull) {
+                logThirdPartyCallInfo(batchNum, workId, "REPULL_SUCCESS");
+            }
 
             if (data == null || data.getPrePackageInfo() == null || isEmptyPrepackage(data)) {
                 String diagnostic = buildDiagnosticMessage("NO_DATA", batchNum, workId);
@@ -182,6 +185,25 @@ public class PrePackageServiceImpl implements PrePackageService {
             snapshot.getErrorMessage(),
             snapshot.getRequestBody(),
             snapshot.getResponseBody()
+        );
+    }
+
+    private void logThirdPartyCallInfo(String batchNum, String workId, String reason) {
+        ThirdPartyMesClient.LastCallSnapshot snapshot = thirdPartyMesClient.getLastCallSnapshot();
+        if (snapshot == null) {
+            log.info("第三方调用记录缺失，批次号: {}, 工单号: {}, 原因: {}", batchNum, workId, reason);
+            return;
+        }
+        log.info(
+            "第三方接口调用信息，原因: {}，批次号: {}，工单号: {}，url: {}，status: {}，error: {}，request: {}，response: {}",
+            reason,
+            batchNum,
+            workId,
+            snapshot.getUrl(),
+            snapshot.getHttpStatus(),
+            snapshot.getErrorMessage(),
+            truncate(snapshot.getRequestBody()),
+            truncate(snapshot.getResponseBody())
         );
     }
 

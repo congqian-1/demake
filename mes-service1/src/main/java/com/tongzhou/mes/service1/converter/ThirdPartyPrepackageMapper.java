@@ -62,6 +62,11 @@ public class ThirdPartyPrepackageMapper {
                     boxDetail = new PrepackageDataDTO.BoxInfoDetail();
                     boxDetail.setBoxCode(boxCode);
                     boxDetail.setSetno(boxInfoItem.getSetno() != null ? boxInfoItem.getSetno() : infoItem.getSetno());
+                    boxDetail.setBuilding(firstNonBlank(boxInfoItem.getBuilding(), infoItem.getBuilding()));
+                    boxDetail.setHouse(firstNonBlank(boxInfoItem.getHouse(), infoItem.getHouse()));
+                    boxDetail.setRoom(firstNonBlank(boxInfoItem.getRoom(), infoItem.getRoom()));
+                    boxDetail.setColor(firstNonBlank(boxInfoItem.getColor(), infoItem.getColor()));
+                    boxDetail.setUnit(firstNonBlank(boxInfoItem.getUnit(), infoItem.getUnit()));
                     boxDetail.setPackageInfos(new ArrayList<>());
                     boxByCode.put(boxCode, boxDetail);
                 }
@@ -84,6 +89,7 @@ public class ThirdPartyPrepackageMapper {
         info.setShipBatch(target.getShipBatch());
         info.setInstallAddress(target.getInstallAddress());
         info.setCustomer(target.getCustomer() != null ? target.getCustomer() : target.getCustomerName());
+        info.setCustomerName(target.getCustomerName());
         info.setReceiveRegion(target.getReceiveRegion());
         info.setSpace(target.getSpace());
         info.setPackType(target.getPackType());
@@ -92,6 +98,10 @@ public class ThirdPartyPrepackageMapper {
         info.setTotalSet(target.getTotalSet());
         info.setMaxPackageNo(target.getMaxPackageNo());
         info.setProductionNum(null);
+        info.setIsProject(target.getIsProject());
+        info.setFnumber(target.getFnumber());
+        info.setDob(target.getDob());
+        info.setDetailedAddress(target.getDetailedAddress());
         info.setBoxInfoDetails(new ArrayList<>(boxByCode.values()));
 
         PrepackageDataDTO dto = new PrepackageDataDTO();
@@ -131,6 +141,7 @@ public class ThirdPartyPrepackageMapper {
         }
         pkg.setPartCount(partCount);
         pkg.setBoxType(boxInfoItem.getBoxType());
+        pkg.setBoxType2(boxInfoItem.getBoxType2());
         pkg.setPartInfos(buildParts(boxInfoItem.getPartInfoList()));
         packages.add(pkg);
         return packages;
@@ -159,9 +170,17 @@ public class ThirdPartyPrepackageMapper {
             dto.setYAxis(part.getYAxis());
             dto.setZAxis(part.getZAxis());
             dto.setSortOrder(part.getSortOrder());
+            dto.setStandardCode(part.getStandardCode());
             dto.setStandardListJson(null);
             parts.add(dto);
         }
         return parts;
+    }
+
+    private String firstNonBlank(String primary, String fallback) {
+        if (primary != null && !primary.trim().isEmpty()) {
+            return primary;
+        }
+        return fallback;
     }
 }

@@ -17,6 +17,7 @@
 
 package com.tongzhou.mes.service1.pojo.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -41,12 +42,17 @@ public class ThirdPartyPrepackageResponseDTO {
         private Integer totalSet;
         private String shipBatch;
         private String installAddress;
+        private Integer isProject;
         private String space;
         private String customerName;
         private String receiveRegion;
+        @JsonProperty("FNUMBER")
+        private String fnumber;
         private Integer maxPackageNo;
         private String workNum;
         private String phone;
+        private String dob;
+        private String detailedAddress;
         private String consignor;
         private String productType;
         private String customer;
@@ -55,7 +61,13 @@ public class ThirdPartyPrepackageResponseDTO {
 
     @Data
     public static class PrePackageInfoItem {
+        private String boxCode;
         private Integer setno;
+        private String building;
+        private String house;
+        private String room;
+        private String color;
+        private String unit;
         private List<BoxInfoItem> boxInfoList;
     }
 
@@ -71,6 +83,11 @@ public class ThirdPartyPrepackageResponseDTO {
         private BigDecimal weight;
         private String boxType;
         private String boxType2;
+        private String building;
+        private String house;
+        private String room;
+        private String color;
+        private String unit;
         private List<PartInfoItem> partInfoList;
     }
 
@@ -89,6 +106,7 @@ public class ThirdPartyPrepackageResponseDTO {
         private BigDecimal xAxis;
         private BigDecimal yAxis;
         private BigDecimal zAxis;
+        private String standardCode;
         private Integer condition;
     }
 }
