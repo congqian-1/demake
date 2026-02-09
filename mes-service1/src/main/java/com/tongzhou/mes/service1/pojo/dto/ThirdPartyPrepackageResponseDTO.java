@@ -100,12 +100,15 @@ public class ThirdPartyPrepackageResponseDTO {
         private Integer layer;
         private Integer piece;
         private Integer sortOrder;
-        private BigDecimal itemLength;
-        private BigDecimal itemWidth;
-        private BigDecimal itemDepth;
-        private BigDecimal xAxis;
-        private BigDecimal yAxis;
-        private BigDecimal zAxis;
+        private String itemLength;
+        private String itemWidth;
+        private String itemDepth;
+        @JsonProperty("xAxis")
+        private String xAxis;
+        @JsonProperty("yAxis")
+        private String yAxis;
+        @JsonProperty("zAxis")
+        private String zAxis;
         private String standardCode;
         private Integer condition;
     }

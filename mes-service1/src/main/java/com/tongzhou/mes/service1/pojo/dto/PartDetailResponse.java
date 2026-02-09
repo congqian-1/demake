@@ -21,7 +21,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -71,22 +70,22 @@ public class PartDetailResponse {
     private String matName;
 
     @Schema(description = "板件长")
-    private BigDecimal itemLength;
+    private String itemLength;
 
     @Schema(description = "板件宽")
-    private BigDecimal itemWidth;
+    private String itemWidth;
 
     @Schema(description = "板件高")
-    private BigDecimal itemDepth;
+    private String itemDepth;
 
     @Schema(description = "X轴坐标")
-    private BigDecimal xAxis;
+    private String xAxis;
 
     @Schema(description = "Y轴坐标")
-    private BigDecimal yAxis;
+    private String yAxis;
 
     @Schema(description = "Z轴坐标")
-    private BigDecimal zAxis;
+    private String zAxis;
 
     @Schema(description = "分拣顺序")
     private Integer sortOrder;

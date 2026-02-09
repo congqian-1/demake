@@ -207,22 +207,22 @@ public class PrepackageDataDTO {
         private String matName; // 花色
 
         @JsonProperty("ItemLength")
-        private BigDecimal itemLength; // 板件长
+        private String itemLength; // 板件长
 
         @JsonProperty("ItemWidth")
-        private BigDecimal itemWidth; // 板件宽
+        private String itemWidth; // 板件宽
 
         @JsonProperty("ItemDepth")
-        private BigDecimal itemDepth; // 板件高
+        private String itemDepth; // 板件高
 
         @JsonProperty("XAxis")
-        private BigDecimal xAxis; // X轴坐标
+        private String xAxis; // X轴坐标
 
         @JsonProperty("YAxis")
-        private BigDecimal yAxis; // Y轴坐标
+        private String yAxis; // Y轴坐标
 
         @JsonProperty("ZAxis")
-        private BigDecimal zAxis; // Z轴坐标
+        private String zAxis; // Z轴坐标
 
         @JsonProperty("SortOrder")
         private Integer sortOrder; // 分拣出板顺序

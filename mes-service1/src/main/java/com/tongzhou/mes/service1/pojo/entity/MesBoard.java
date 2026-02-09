@@ -91,32 +91,32 @@ public class MesBoard {
     /**
      * 板件长
      */
-    private BigDecimal itemLength;
+    private String itemLength;
 
     /**
      * 板件宽
      */
-    private BigDecimal itemWidth;
+    private String itemWidth;
 
     /**
      * 板件高
      */
-    private BigDecimal itemDepth;
+    private String itemDepth;
 
     /**
      * X轴坐标
      */
-    private BigDecimal xAxis;
+    private String xAxis;
 
     /**
      * Y轴坐标
      */
-    private BigDecimal yAxis;
+    private String yAxis;
 
     /**
      * Z轴坐标
      */
-    private BigDecimal zAxis;
+    private String zAxis;
 
     /**
      * 分拣出板顺序
