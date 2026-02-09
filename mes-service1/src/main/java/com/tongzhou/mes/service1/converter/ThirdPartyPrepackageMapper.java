@@ -53,7 +53,7 @@ public class ThirdPartyPrepackageMapper {
                 continue;
             }
             for (ThirdPartyPrepackageResponseDTO.BoxInfoItem boxInfoItem : infoItem.getBoxInfoList()) {
-                String boxCode = boxInfoItem.getBoxCode();
+                String boxCode = firstNonBlank(boxInfoItem.getBoxCode(), infoItem.getBoxCode());
                 if (boxCode == null || boxCode.trim().isEmpty()) {
                     boxCode = "UNKNOWN-" + batchNum + "-" + workId;
                 }
