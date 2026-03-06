@@ -38,4 +38,14 @@ public interface PrePackageService {
      * @param reason 修正原因
      */
     void repullWorkOrder(String workId, String operator, String reason);
+
+    /**
+     * 重置指定批次下全部工单为未拉取状态。
+     *
+     * @param batchNum 批次号
+     * @param operator 操作人
+     * @param reason 原因
+     * @return 重置数量
+     */
+    int repullBatchWorkOrders(String batchNum, String operator, String reason);
 }

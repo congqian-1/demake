@@ -266,7 +266,7 @@ create table if not exists mes.mes_work_order
     batch_id           bigint                                not null comment '批次ID（外键）',
     optimizing_file_id bigint                                not null comment '优化文件ID（外键）',
     batch_num          varchar(100)                          not null comment '批次号（冗余字段，方便查询）',
-    work_id            varchar(100)                          not null comment '工单号（唯一）',
+    work_id            varchar(100)                          not null comment '工单号',
     route              varchar(100)                          not null comment '线路',
     route_id           varchar(100)                          null comment '线路ID',
     order_type         varchar(50)                           not null comment '订单类型',
@@ -287,9 +287,7 @@ create table if not exists mes.mes_work_order
     created_by         varchar(100)                          null comment '创建人',
     created_time       datetime    default CURRENT_TIMESTAMP null comment '创建时间',
     updated_by         varchar(100)                          null comment '更新人',
-    updated_time       datetime    default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
-    constraint uk_work_id
-        unique (work_id)
+    updated_time       datetime    default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间'
 )
     comment '工单表';
 
@@ -307,6 +305,9 @@ create index idx_optimizing_file_id
 
 create index idx_prepackage_status
     on mes.mes_work_order (prepackage_status);
+
+create index idx_work_id
+    on mes.mes_work_order (work_id);
 
 create table if not exists mes.mes_work_order_correction_log
 (

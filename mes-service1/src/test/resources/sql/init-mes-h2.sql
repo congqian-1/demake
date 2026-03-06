@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS mes_work_order (
     updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uk_work_id ON mes_work_order (work_id);
+CREATE INDEX IF NOT EXISTS idx_work_id_wo ON mes_work_order (work_id);
 CREATE INDEX IF NOT EXISTS idx_batch_id_wo ON mes_work_order (batch_id);
 CREATE INDEX IF NOT EXISTS idx_is_deleted_wo ON mes_work_order (is_deleted);
 CREATE INDEX IF NOT EXISTS idx_last_pull_time ON mes_work_order (last_pull_time);

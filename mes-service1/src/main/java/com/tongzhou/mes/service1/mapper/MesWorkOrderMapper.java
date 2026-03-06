@@ -23,6 +23,7 @@ import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -52,4 +53,22 @@ public interface MesWorkOrderMapper extends BaseMapper<MesWorkOrder> {
      */
     @Delete("DELETE FROM mes_work_order WHERE batch_id = #{batchId}")
     int physicalDeleteByBatchId(@Param("batchId") Long batchId);
+
+    /**
+     * Select a work order by optimizing file and work id.
+     */
+    @Select("SELECT * FROM mes_work_order WHERE optimizing_file_id = #{optimizingFileId} AND work_id = #{workId} AND is_deleted = 0")
+    MesWorkOrder selectByOptimizingFileIdAndWorkId(@Param("optimizingFileId") Long optimizingFileId, @Param("workId") String workId);
+
+    /**
+     * Select work orders by batch number.
+     */
+    @Select("SELECT * FROM mes_work_order WHERE batch_num = #{batchNum} AND is_deleted = 0")
+    List<MesWorkOrder> selectByBatchNum(@Param("batchNum") String batchNum);
+
+    /**
+     * Touch the update timestamp of a work order.
+     */
+    @Update("UPDATE mes_work_order SET updated_time = CURRENT_TIMESTAMP WHERE id = #{id}")
+    int touchById(@Param("id") Long id);
 }

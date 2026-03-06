@@ -23,6 +23,7 @@ import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -39,10 +40,22 @@ public interface MesOptimizationFileMapper extends BaseMapper<MesOptimizationFil
      */
     @Select("SELECT * FROM mes_optimizing_file WHERE batch_id = #{batchId} AND is_deleted = 0")
     List<MesOptimizationFile> selectByBatchId(@Param("batchId") Long batchId);
+
+    /**
+     * Select optimizing file by batch id and file name.
+     */
+    @Select("SELECT * FROM mes_optimizing_file WHERE batch_id = #{batchId} AND optimizing_file_name = #{fileName} AND is_deleted = 0")
+    MesOptimizationFile selectByBatchIdAndFileName(@Param("batchId") Long batchId, @Param("fileName") String fileName);
     
     /**
      * 物理删除指定批次的所有优化文件
      */
     @Delete("DELETE FROM mes_optimizing_file WHERE batch_id = #{batchId}")
     int physicalDeleteByBatchId(@Param("batchId") Long batchId);
+
+    /**
+     * Touch the update timestamp of an optimizing file.
+     */
+    @Update("UPDATE mes_optimizing_file SET updated_time = CURRENT_TIMESTAMP WHERE id = #{id}")
+    int touchById(@Param("id") Long id);
 }

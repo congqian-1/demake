@@ -64,4 +64,10 @@ public interface MesPrepackageOrderMapper extends BaseMapper<MesPrepackageOrder>
      */
     @Delete("DELETE FROM mes_prepackage_order WHERE work_id = #{workId}")
     int physicalDeleteByWorkId(@Param("workId") String workId);
+
+    /**
+     * Physically delete prepackage orders by work order id.
+     */
+    @Delete("DELETE FROM mes_prepackage_order WHERE work_order_id = #{workOrderId}")
+    int physicalDeleteByWorkOrderId(@Param("workOrderId") Long workOrderId);
 }

@@ -17,7 +17,7 @@
 
 package com.tongzhou.mes.service1.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.tongzhou.mes.service1.converter.BatchConverter;
 import com.tongzhou.mes.service1.mapper.MesBatchMapper;
 import com.tongzhou.mes.service1.mapper.MesOptimizationFileMapper;
@@ -48,13 +48,7 @@ public class BatchServiceImpl implements BatchService {
     private final BatchConverter batchConverter;
 
     /**
-     * 保存批次数据（含幂等性处理）
-     * 
-     * 逻辑：
-     * 1. 检查批次号是否已存在
-     * 2. 如果存在，先删除旧的优化文件和工单数据
-     * 3. 保存/更新批次信息
-     * 4. 保存优化文件和工单数据
+     * 保存批次数据：同批次内支持增量补推，重复组合只重置状态不新增记录。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -62,58 +56,64 @@ public class BatchServiceImpl implements BatchService {
         String batchNum = request.getBatchNum();
         log.info("开始处理批次推送，批次号: {}", batchNum);
 
-        // 1. 查询批次是否已存在
-        MesBatch existingBatch = batchMapper.selectOne(
-                new LambdaQueryWrapper<MesBatch>()
-                        .eq(MesBatch::getBatchNum, batchNum)
-        );
-
-        Long batchId;
-        if (existingBatch != null) {
-            log.info("批次号 {} 已存在，进行幂等性处理：物理删除旧数据并重新插入", batchNum);
-            batchId = existingBatch.getId();
-
-            // 先物理删除旧的工单数据（有外键约束，需要先删）
-            int deletedWorkOrders = workOrderMapper.physicalDeleteByBatchId(batchId);
-            log.info("已物理删除批次 {} 的旧工单数据，数量: {}", batchNum, deletedWorkOrders);
-
-            // 再物理删除旧的优化文件数据
-            int deletedFiles = optimizationFileMapper.physicalDeleteByBatchId(batchId);
-            log.info("已物理删除批次 {} 的旧优化文件数据，数量: {}", batchNum, deletedFiles);
-
-            // 更新批次信息
-            MesBatch updatedBatch = batchConverter.toMesBatch(request);
-            existingBatch.setBatchType(updatedBatch.getBatchType());
-            existingBatch.setProductTime(updatedBatch.getProductTime());
-            existingBatch.setNestingTime(updatedBatch.getNestingTime());
-            existingBatch.setSimpleBatchNum(updatedBatch.getSimpleBatchNum());
-            existingBatch.setYmba014(updatedBatch.getYmba014());
-            existingBatch.setYmba016(updatedBatch.getYmba016());
-            batchMapper.updateById(existingBatch);
-            log.info("已更新批次信息: {}", batchNum);
-        } else {
-            // 新批次，直接插入
-            MesBatch batch = batchConverter.toMesBatch(request);
+        MesBatch batch = batchMapper.selectByBatchNum(batchNum);
+        if (batch == null) {
+            batch = batchConverter.toMesBatch(request);
             batchMapper.insert(batch);
-            batchId = batch.getId();
-            log.info("已创建新批次: {}, ID: {}", batchNum, batchId);
+            log.info("已创建新批次: {}, ID: {}", batchNum, batch.getId());
+        } else {
+            mergeBatch(batch, request);
+            batchMapper.updateById(batch);
+            log.info("已复用批次并刷新信息: {}, ID: {}", batchNum, batch.getId());
         }
 
-        // 2. 保存优化文件和工单数据
+        Long batchId = batch.getId();
         int totalWorkOrders = 0;
         for (BatchPushRequest.OptimizingFileInfo fileInfo : request.getOptimizingFiles()) {
-            // 保存优化文件
-            MesOptimizationFile file = batchConverter.toMesOptimizationFile(fileInfo, batchNum, batchId);
-            optimizationFileMapper.insert(file);
-            Long optimizingFileId = file.getId();
-            log.info("已保存优化文件: {}, ID: {}", fileInfo.getOptimizingFileName(), optimizingFileId);
+            MesOptimizationFile file = optimizationFileMapper.selectByBatchIdAndFileName(batchId, fileInfo.getOptimizingFileName());
+            if (file == null) {
+                file = batchConverter.toMesOptimizationFile(fileInfo, batchNum, batchId);
+                optimizationFileMapper.insert(file);
+                log.info("已新增优化文件: {}, ID: {}", fileInfo.getOptimizingFileName(), file.getId());
+            } else {
+                file.setStationCode(fileInfo.getStationCode());
+                file.setUrgency(fileInfo.getUrgency());
+                optimizationFileMapper.updateById(file);
+                optimizationFileMapper.touchById(file.getId());
+                log.info("已复用优化文件并刷新信息: {}, ID: {}", fileInfo.getOptimizingFileName(), file.getId());
+            }
 
-            // 保存该优化文件下的所有工单
             for (BatchPushRequest.WorkOrderInfo orderInfo : fileInfo.getWorkOrders()) {
-                MesWorkOrder workOrder = batchConverter.toMesWorkOrder(orderInfo, batchNum, batchId, optimizingFileId);
-                workOrderMapper.insert(workOrder);
+                MesWorkOrder existingWorkOrder = workOrderMapper.selectByOptimizingFileIdAndWorkId(file.getId(), orderInfo.getWorkId());
+                if (existingWorkOrder == null) {
+                    MesWorkOrder workOrder = batchConverter.toMesWorkOrder(orderInfo, batchNum, batchId, file.getId());
+                    workOrderMapper.insert(workOrder);
+                    log.info("已新增工单: {}, 工单号: {}", workOrder.getId(), orderInfo.getWorkId());
+                } else {
+                    mergeWorkOrder(existingWorkOrder, orderInfo, batchNum, batchId, file.getId());
+                    workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+                        .set(MesWorkOrder::getBatchId, existingWorkOrder.getBatchId())
+                        .set(MesWorkOrder::getOptimizingFileId, existingWorkOrder.getOptimizingFileId())
+                        .set(MesWorkOrder::getBatchNum, existingWorkOrder.getBatchNum())
+                        .set(MesWorkOrder::getRoute, existingWorkOrder.getRoute())
+                        .set(MesWorkOrder::getRouteId, existingWorkOrder.getRouteId())
+                        .set(MesWorkOrder::getOrderType, existingWorkOrder.getOrderType())
+                        .set(MesWorkOrder::getDeliveryTime, existingWorkOrder.getDeliveryTime())
+                        .set(MesWorkOrder::getNestingTime, existingWorkOrder.getNestingTime())
+                        .set(MesWorkOrder::getYmba014, existingWorkOrder.getYmba014())
+                        .set(MesWorkOrder::getYmba015, existingWorkOrder.getYmba015())
+                        .set(MesWorkOrder::getYmba016, existingWorkOrder.getYmba016())
+                        .set(MesWorkOrder::getPart0, existingWorkOrder.getPart0())
+                        .set(MesWorkOrder::getCondition0, existingWorkOrder.getCondition0())
+                        .set(MesWorkOrder::getPartTime0, existingWorkOrder.getPartTime0())
+                        .set(MesWorkOrder::getZuz, existingWorkOrder.getZuz())
+                        .set(MesWorkOrder::getPrepackageStatus, "NOT_PULLED")
+                        .set(MesWorkOrder::getRetryCount, 0)
+                        .set(MesWorkOrder::getErrorMessage, null)
+                        .eq(MesWorkOrder::getId, existingWorkOrder.getId()));
+                    log.info("已复用工单并重置状态: {}, 工单号: {}", existingWorkOrder.getId(), orderInfo.getWorkId());
+                }
                 totalWorkOrders++;
-                log.info("已保存工单: {}, 工单号: {}", workOrder.getId(), orderInfo.getWorkId());
             }
         }
 
@@ -121,5 +121,41 @@ public class BatchServiceImpl implements BatchService {
                 batchNum, request.getOptimizingFiles().size(), totalWorkOrders);
         
         return batchNum;
+    }
+
+    private void mergeBatch(MesBatch batch, BatchPushRequest request) {
+        MesBatch updatedBatch = batchConverter.toMesBatch(request);
+        batch.setBatchType(updatedBatch.getBatchType());
+        batch.setProductTime(updatedBatch.getProductTime());
+        batch.setNestingTime(updatedBatch.getNestingTime());
+        batch.setSimpleBatchNum(updatedBatch.getSimpleBatchNum());
+        batch.setYmba014(updatedBatch.getYmba014());
+        batch.setYmba016(updatedBatch.getYmba016());
+    }
+
+    private void mergeWorkOrder(MesWorkOrder workOrder,
+                                BatchPushRequest.WorkOrderInfo orderInfo,
+                                String batchNum,
+                                Long batchId,
+                                Long optimizingFileId) {
+        MesWorkOrder incoming = batchConverter.toMesWorkOrder(orderInfo, batchNum, batchId, optimizingFileId);
+        workOrder.setBatchId(batchId);
+        workOrder.setOptimizingFileId(optimizingFileId);
+        workOrder.setBatchNum(batchNum);
+        workOrder.setRoute(incoming.getRoute());
+        workOrder.setRouteId(incoming.getRouteId());
+        workOrder.setOrderType(incoming.getOrderType());
+        workOrder.setDeliveryTime(incoming.getDeliveryTime());
+        workOrder.setNestingTime(incoming.getNestingTime());
+        workOrder.setYmba014(incoming.getYmba014());
+        workOrder.setYmba015(incoming.getYmba015());
+        workOrder.setYmba016(incoming.getYmba016());
+        workOrder.setPart0(incoming.getPart0());
+        workOrder.setCondition0(incoming.getCondition0());
+        workOrder.setPartTime0(incoming.getPartTime0());
+        workOrder.setZuz(incoming.getZuz());
+        workOrder.setPrepackageStatus("NOT_PULLED");
+        workOrder.setRetryCount(0);
+        workOrder.setErrorMessage(null);
     }
 }

@@ -52,4 +52,15 @@ public interface MesPackageMapper extends BaseMapper<MesPackage> {
      */
     @Delete("DELETE FROM mes_package WHERE work_id = #{workId}")
     int physicalDeleteByWorkId(@Param("workId") String workId);
+
+    /**
+     * Physically delete packages by box ids.
+     */
+    @Delete({"<script>",
+        "DELETE FROM mes_package WHERE box_id IN",
+        "<foreach collection='boxIds' item='id' open='(' separator=',' close=')'>",
+        "#{id}",
+        "</foreach>",
+        "</script>"})
+    int physicalDeleteByBoxIds(@Param("boxIds") List<Long> boxIds);
 }

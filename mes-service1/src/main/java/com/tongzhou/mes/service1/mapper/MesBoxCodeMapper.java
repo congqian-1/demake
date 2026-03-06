@@ -52,4 +52,15 @@ public interface MesBoxCodeMapper extends BaseMapper<MesBoxCode> {
      */
     @Delete("DELETE FROM mes_box WHERE work_id = #{workId}")
     int physicalDeleteByWorkId(@Param("workId") String workId);
+
+    /**
+     * Physically delete box codes by prepackage order ids.
+     */
+    @Delete({"<script>",
+        "DELETE FROM mes_box WHERE prepackage_order_id IN",
+        "<foreach collection='prepackageOrderIds' item='id' open='(' separator=',' close=')'>",
+        "#{id}",
+        "</foreach>",
+        "</script>"})
+    int physicalDeleteByPrepackageOrderIds(@Param("prepackageOrderIds") List<Long> prepackageOrderIds);
 }

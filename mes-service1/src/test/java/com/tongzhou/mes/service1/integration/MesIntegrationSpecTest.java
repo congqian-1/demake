@@ -177,24 +177,28 @@ class MesIntegrationSpecTest {
     }
 
     @Test
-    void story1_batchPush_shouldBeIdempotent() throws Exception {
+    void story1_batchPush_shouldResetExistingWorkOrder_whenSameBatchFileAndWorkOrderRepeated() throws Exception {
         String batchNum = unique("BATCH");
-        String oldWorkId = unique("WO");
-        String newWorkId1 = unique("WO");
-        String newWorkId2 = unique("WO");
+        String workId = unique("WO");
 
         mockMvc.perform(post("/api/v1/third-party/batch/push")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(buildBatchRequest(batchNum, Arrays.asList(oldWorkId)))))
+                .content(objectMapper.writeValueAsString(buildBatchRequest(batchNum, Arrays.asList(workId)))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
 
+        MesWorkOrder existing = getWorkOrder(workId);
+        existing.setPrepackageStatus("FAILED");
+        existing.setRetryCount(2);
+        existing.setErrorMessage("mock-error");
+        workOrderMapper.updateById(existing);
+
         mockMvc.perform(post("/api/v1/third-party/batch/push")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(buildBatchRequest(batchNum, Arrays.asList(newWorkId1, newWorkId2)))))
+                .content(objectMapper.writeValueAsString(buildBatchRequest(batchNum, Arrays.asList(workId)))))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.workOrderCount").value(2));
+            .andExpect(jsonPath("$.workOrderCount").value(1));
 
         MesBatch batch = batchMapper.selectOne(
             new LambdaQueryWrapper<MesBatch>().eq(MesBatch::getBatchNum, batchNum));
@@ -202,11 +206,37 @@ class MesIntegrationSpecTest {
 
         long countAfterUpdate = workOrderMapper.selectCount(
             new LambdaQueryWrapper<MesWorkOrder>().eq(MesWorkOrder::getBatchId, batch.getId()));
-        assertEquals(2L, countAfterUpdate);
+        assertEquals(1L, countAfterUpdate);
 
-        long oldWorkExists = workOrderMapper.selectCount(
-            new LambdaQueryWrapper<MesWorkOrder>().eq(MesWorkOrder::getWorkId, oldWorkId));
-        assertEquals(0L, oldWorkExists);
+        MesWorkOrder refreshed = getWorkOrder(workId);
+        assertEquals("NOT_PULLED", refreshed.getPrepackageStatus());
+        assertEquals(0, refreshed.getRetryCount());
+        assertEquals(null, refreshed.getErrorMessage());
+    }
+
+    @Test
+    void story1_batchPush_shouldAllowNewFileAndNewWorkOrderWithinSameBatch() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId1 = unique("WO");
+        String workId2 = unique("WO");
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildBatchRequest(batchNum, "OPT-A.txt", Arrays.asList(workId1)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true));
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildBatchRequest(batchNum, "OPT-B.txt", Arrays.asList(workId2)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true));
+
+        MesBatch batch = batchMapper.selectOne(
+            new LambdaQueryWrapper<MesBatch>().eq(MesBatch::getBatchNum, batchNum));
+        assertNotNull(batch);
+        assertEquals(1L, batchMapper.selectCount(new LambdaQueryWrapper<MesBatch>().eq(MesBatch::getBatchNum, batchNum)));
+        assertEquals(2L, workOrderMapper.selectCount(new LambdaQueryWrapper<MesWorkOrder>().eq(MesWorkOrder::getBatchId, batch.getId())));
     }
 
     @Test
@@ -498,7 +528,7 @@ class MesIntegrationSpecTest {
     }
 
     @Test
-    void story7_repull_shouldOverwritePrepackage_andPreserveReports() throws Exception {
+    void story7_repull_shouldResetStatusOnly_thenSchedulerOverwritesData() throws Exception {
         String batchNum = unique("BATCH");
         String workId = unique("WO");
         pushBatch(batchNum, workId);
@@ -538,7 +568,15 @@ class MesIntegrationSpecTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"operator\":\"tester\",\"reason\":\"spec-test\"}"))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.success").value(true));
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.message").value("工单已重置为未拉取"));
+
+        MesWorkOrder resetWorkOrder = getWorkOrder(workId);
+        assertEquals("NOT_PULLED", resetWorkOrder.getPrepackageStatus());
+
+        prePackagePullTask.pullPrePackageData();
+        MesWorkOrder pulledAgain = waitForWorkOrderStatus(workId, "PULLED", 5000);
+        assertEquals("PULLED", pulledAgain.getPrepackageStatus());
 
         long activeBoards = boardMapper.selectCount(
             new LambdaQueryWrapper<MesBoard>()
@@ -551,6 +589,32 @@ class MesIntegrationSpecTest {
         long reports = workReportMapper.selectCount(
             new LambdaQueryWrapper<MesWorkReport>().eq(MesWorkReport::getPartCode, partWithReport));
         assertEquals(1L, reports);
+    }
+
+    @Test
+    void story7_batchRepull_shouldResetAllWorkOrdersToNotPulled() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId1 = unique("WO");
+        String workId2 = unique("WO");
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildBatchRequest(batchNum, Arrays.asList(workId1, workId2)))))
+            .andExpect(status().isOk());
+
+        prePackagePullTask.pullPrePackageData();
+        assertEquals("PULLED", waitForWorkOrderStatus(workId1, "PULLED", 5000).getPrepackageStatus());
+        assertEquals("PULLED", waitForWorkOrderStatus(workId2, "PULLED", 5000).getPrepackageStatus());
+
+        mockMvc.perform(post("/api/v1/admin/work-order/batch/{batchNum}/repull", batchNum)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"operator\":\"tester\",\"reason\":\"batch-reset\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.resetCount").value(2));
+
+        assertEquals("NOT_PULLED", getWorkOrder(workId1).getPrepackageStatus());
+        assertEquals("NOT_PULLED", getWorkOrder(workId2).getPrepackageStatus());
     }
 
     private void pushBatch(String batchNum, String workId) throws Exception {
@@ -588,6 +652,10 @@ class MesIntegrationSpecTest {
     }
 
     private BatchPushRequest buildBatchRequest(String batchNum, List<String> workIds) {
+        return buildBatchRequest(batchNum, "OPT-" + batchNum + ".txt", workIds);
+    }
+
+    private BatchPushRequest buildBatchRequest(String batchNum, String optimizingFileName, List<String> workIds) {
         String today = LocalDate.now().toString();
         String tomorrow = LocalDate.now().plusDays(1).toString();
 
@@ -634,7 +702,7 @@ class MesIntegrationSpecTest {
         }
 
         BatchPushRequest.OptimizingFileInfo fileInfo = new BatchPushRequest.OptimizingFileInfo();
-        fileInfo.setOptimizingFileName("OPT-" + batchNum + ".txt");
+        fileInfo.setOptimizingFileName(optimizingFileName);
         fileInfo.setStationCode("C1A001");
         fileInfo.setUrgency(0);
         fileInfo.setWorkOrders(workOrders);

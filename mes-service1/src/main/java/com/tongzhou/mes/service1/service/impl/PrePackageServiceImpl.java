@@ -19,7 +19,6 @@ package com.tongzhou.mes.service1.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tongzhou.mes.service1.client.ThirdPartyMesClient;
 import com.tongzhou.mes.service1.mapper.*;
 import com.tongzhou.mes.service1.pojo.dto.PrepackageDataDTO;
@@ -32,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,8 +54,6 @@ public class PrePackageServiceImpl implements PrePackageService {
     private final MesCorrectionLogMapper correctionLogMapper;
     private final ThirdPartyMesClient thirdPartyMesClient;
     private final EmailNotificationService emailNotificationService;
-    private final ObjectMapper objectMapper;
-
     private static final int MAX_BATCH_SIZE = 50;
     private static final int MAX_RETRY_COUNT = 3;
     private static final long[] RETRY_DELAYS = {1000, 2000, 4000}; // 1s, 2s, 4s
@@ -94,9 +92,6 @@ public class PrePackageServiceImpl implements PrePackageService {
 
         log.info("开始拉取工单预包装数据，工单号: {}, 批次号: {}", workId, batchNum);
 
-        // 检查是否为重新拉取（已有预包装数据）
-        boolean isRepull = checkIfRepull(workOrder);
-
         // 更新工单状态为"更新中"
         workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
                 .set(MesWorkOrder::getPrepackageStatus, "UPDATING")
@@ -106,9 +101,7 @@ public class PrePackageServiceImpl implements PrePackageService {
         try {
             // 带重试的拉取
             PrepackageDataDTO data = pullWithRetry(batchNum, workId);
-            if (isRepull) {
-                logThirdPartyCallInfo(batchNum, workId, "REPULL_SUCCESS");
-            }
+            logThirdPartyCallInfo(batchNum, workId, "PULL_SUCCESS");
 
             if (data == null || data.getPrePackageInfo() == null || isEmptyPrepackage(data)) {
                 String diagnostic = buildDiagnosticMessage("NO_DATA", batchNum, workId);
@@ -122,12 +115,7 @@ public class PrePackageServiceImpl implements PrePackageService {
                 return;
             }
 
-            // 保存预包装数据（根据是否重新拉取选择保存方式）
-            if (isRepull) {
-                savePrePackageDataWithOverwrite(workOrder, data);
-            } else {
-                savePrePackageData(workOrder, data);
-            }
+            savePrePackageDataWithOverwrite(workOrder, data);
 
             // 更新工单状态为"已拉取"
             workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
@@ -137,7 +125,7 @@ public class PrePackageServiceImpl implements PrePackageService {
                     .set(MesWorkOrder::getErrorMessage, null)
                     .eq(MesWorkOrder::getId, workOrder.getId()));
 
-            log.info("工单预包装数据拉取成功，工单号: {}, 重新拉取: {}", workId, isRepull);
+            log.info("工单预包装数据拉取成功，工单号: {}", workId);
 
         } catch (Exception e) {
             log.error("工单预包装数据拉取失败，工单号: {}, 错误: {}", workId, e.getMessage(), e);
@@ -232,17 +220,6 @@ public class PrePackageServiceImpl implements PrePackageService {
             return value;
         }
         return value.substring(0, max) + "...(truncated)";
-    }
-
-    /**
-     * 检查是否为重新拉取
-     */
-    private boolean checkIfRepull(MesWorkOrder workOrder) {
-        Long count = prepackageOrderMapper.selectCount(
-            new LambdaQueryWrapper<MesPrepackageOrder>()
-                .eq(MesPrepackageOrder::getWorkOrderId, workOrder.getId())
-        );
-        return count != null && count > 0;
     }
 
     /**
@@ -450,38 +427,55 @@ public class PrePackageServiceImpl implements PrePackageService {
     @Transactional(rollbackFor = Exception.class)
     public void savePrePackageDataWithOverwrite(MesWorkOrder workOrder, PrepackageDataDTO data) {
         String workId = workOrder.getWorkId();
+        Long workOrderId = workOrder.getId();
 
         log.info("开始覆盖保存预包装数据（数据修正模式），工单号: {}", workId);
 
-        // 0. 查询现有板件（覆盖模式下需要按partCode复用ID，避免唯一键冲突）
-        List<MesBoard> existingBoards = boardMapper.selectList(
-            new LambdaQueryWrapper<MesBoard>()
-                .eq(MesBoard::getWorkId, workId)
+        List<MesPrepackageOrder> existingOrders = prepackageOrderMapper.selectList(
+            new LambdaQueryWrapper<MesPrepackageOrder>()
+                .eq(MesPrepackageOrder::getWorkOrderId, workOrderId)
         );
+        List<Long> existingOrderIds = collectPrepackageOrderIds(existingOrders);
+        List<MesBoxCode> existingBoxes = existingOrderIds.isEmpty()
+            ? new ArrayList<>()
+            : boxCodeMapper.selectByPrepackageOrderIds(existingOrderIds);
+        List<Long> existingBoxIds = collectBoxIds(existingBoxes);
+        List<MesPackage> existingPackages = existingBoxIds.isEmpty()
+            ? new ArrayList<>()
+            : packageMapper.selectByBoxIds(existingBoxIds);
+        List<Long> existingPackageIds = collectPackageIds(existingPackages);
+        List<MesBoard> existingBoards = existingPackageIds.isEmpty()
+            ? new ArrayList<>()
+            : boardMapper.selectByPackageIds(existingPackageIds);
         Map<String, MesBoard> existingBoardsByPartCode = new HashMap<>();
         for (MesBoard board : existingBoards) {
             existingBoardsByPartCode.put(board.getPartCode(), board);
         }
 
-        // 1. 软删除旧板件（设置is_deleted=1，保留报工记录关联）
-        int deletedBoards = boardMapper.update(null,
-            new LambdaUpdateWrapper<MesBoard>()
-                .set(MesBoard::getIsDeleted, 1)
-                .set(MesBoard::getUpdatedTime, LocalDateTime.now())
-                .eq(MesBoard::getWorkId, workId)
-        );
+        int deletedBoards = 0;
+        if (!existingPackageIds.isEmpty()) {
+            deletedBoards = boardMapper.update(null,
+                new LambdaUpdateWrapper<MesBoard>()
+                    .set(MesBoard::getIsDeleted, 1)
+                    .set(MesBoard::getUpdatedTime, LocalDateTime.now())
+                    .in(MesBoard::getPackageId, existingPackageIds)
+            );
+        }
         log.info("软删除旧板件数量: {}", deletedBoards);
 
-        // 2. 物理删除旧包件
-        int deletedPackages = packageMapper.physicalDeleteByWorkId(workId);
+        int deletedPackages = 0;
+        if (!existingBoxIds.isEmpty()) {
+            deletedPackages = packageMapper.physicalDeleteByBoxIds(existingBoxIds);
+        }
         log.info("物理删除旧包件数量: {}", deletedPackages);
 
-        // 3. 物理删除旧箱码
-        int deletedBoxes = boxCodeMapper.physicalDeleteByWorkId(workId);
+        int deletedBoxes = 0;
+        if (!existingOrderIds.isEmpty()) {
+            deletedBoxes = boxCodeMapper.physicalDeleteByPrepackageOrderIds(existingOrderIds);
+        }
         log.info("物理删除旧箱码数量: {}", deletedBoxes);
 
-        // 4. 物理删除旧预包装订单
-        int deletedOrders = prepackageOrderMapper.physicalDeleteByWorkId(workId);
+        int deletedOrders = prepackageOrderMapper.physicalDeleteByWorkOrderId(workOrderId);
         log.info("物理删除旧预包装订单数量: {}", deletedOrders);
 
         // 5. 插入新的预包装数据（复用原有的保存逻辑）
@@ -495,106 +489,102 @@ public class PrePackageServiceImpl implements PrePackageService {
     public void repullWorkOrder(String workId, String operator, String reason) {
         log.info("开始重新拉取工单预包装数据，工单号: {}, 操作人: {}, 原因: {}", workId, operator, reason);
 
-        // 1. 查询工单
-        MesWorkOrder workOrder = workOrderMapper.selectOne(
+        List<MesWorkOrder> workOrders = workOrderMapper.selectList(
             new LambdaQueryWrapper<MesWorkOrder>()
                 .eq(MesWorkOrder::getWorkId, workId)
+                .eq(MesWorkOrder::getIsDeleted, 0)
         );
-
-        if (workOrder == null) {
+        if (workOrders.isEmpty()) {
             throw new RuntimeException("工单不存在: " + workId);
         }
 
-        // 2. 记录修正前数据（统计数量）
-        Long oldBoardCount = boardMapper.selectCount(
-            new LambdaQueryWrapper<MesBoard>()
-                .eq(MesBoard::getWorkId, workId)
-                .eq(MesBoard::getIsDeleted, 0)
-        );
-
-        Long oldPackageCount = packageMapper.selectCount(
-            new LambdaQueryWrapper<MesPackage>()
-                .eq(MesPackage::getWorkId, workId)
-        );
-
-        // 3. 创建修正日志
-        MesCorrectionLog correctionLog = new MesCorrectionLog();
-        correctionLog.setWorkOrderId(workOrder.getId());
-        correctionLog.setWorkId(workId);
-        correctionLog.setOperator(operator);
-        correctionLog.setOperationTime(LocalDateTime.now());
-        correctionLog.setCorrectionReason(reason);
-        correctionLog.setOldStatus("PULLED");
-        correctionLog.setNewStatus("REPULLING");
-        correctionLog.setPartCountBefore(oldBoardCount.intValue());
-        correctionLog.setPartCountAfter(0);
-        correctionLog.setCreatedBy(operator);
-        correctionLog.setCreatedTime(LocalDateTime.now());
-        correctionLogMapper.insert(correctionLog);
-        log.info("已创建修正日志，ID: {}", correctionLog.getId());
-
-        try {
-            // 4. 重置工单状态为"未拉取"
+        for (MesWorkOrder workOrder : workOrders) {
+            MesCorrectionLog correctionLog = buildCorrectionLog(workOrder, operator, reason, "NOT_PULLED");
+            correctionLogMapper.insert(correctionLog);
             workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
                     .set(MesWorkOrder::getPrepackageStatus, "NOT_PULLED")
                     .set(MesWorkOrder::getRetryCount, 0)
                     .set(MesWorkOrder::getErrorMessage, null)
                     .eq(MesWorkOrder::getId, workOrder.getId()));
-
-            log.info("已重置工单状态为未拉取，工单号: {}", workId);
-
-            // 5. 立即触发拉取（会自动检测到是重新拉取，使用覆盖模式）
-            pullSingleWorkOrder(workOrder);
-
-            // 6. 记录修正后数据
-            Long newBoardCount = boardMapper.selectCount(
-                new LambdaQueryWrapper<MesBoard>()
-                    .eq(MesBoard::getWorkId, workId)
-                    .eq(MesBoard::getIsDeleted, 0)
-            );
-
-            Long newPackageCount = packageMapper.selectCount(
-                new LambdaQueryWrapper<MesPackage>()
-                    .eq(MesPackage::getWorkId, workId)
-            );
-
-            // 更新修正日志
-            correctionLog.setNewStatus("PULLED");
-            correctionLog.setPartCountAfter(newBoardCount.intValue());
             correctionLog.setResult("SUCCESS");
-            correctionLog.setErrorMessage(null);
             correctionLog.setUpdatedBy(operator);
             correctionLog.setUpdatedTime(LocalDateTime.now());
             correctionLogMapper.updateById(correctionLog);
-
-            log.info("工单数据修正完成，工单号: {}, 板件数变化: {} -> {}, 包件数变化: {} -> {}",
-                workId, oldBoardCount, newBoardCount, oldPackageCount, newPackageCount);
-
-        } catch (Exception e) {
-            log.error("工单数据修正失败，工单号: {}, 错误: {}", workId, e.getMessage(), e);
-
-            // 更新修正日志为失败（记录错误）
-            correctionLog.setResult("FAILED");
-            correctionLog.setErrorMessage(e.getMessage());
-            correctionLog.setUpdatedBy(operator);
-            correctionLog.setUpdatedTime(LocalDateTime.now());
-            correctionLogMapper.updateById(correctionLog);
-
-            throw new RuntimeException("工单数据修正失败: " + e.getMessage(), e);
         }
+
+        log.info("已重置工单状态为未拉取，工单号: {}, 命中记录数: {}", workId, workOrders.size());
     }
 
-    /**
-     * 修正数据快照（用于JSON序列化）
-     */
-    private static class CorrectionDataSnapshot {
-        public Long boardCount;
-        public Long packageCount;
-
-        public CorrectionDataSnapshot(Long boardCount, Long packageCount) {
-            this.boardCount = boardCount;
-            this.packageCount = packageCount;
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int repullBatchWorkOrders(String batchNum, String operator, String reason) {
+        List<MesWorkOrder> workOrders = workOrderMapper.selectByBatchNum(batchNum);
+        if (workOrders.isEmpty()) {
+            throw new RuntimeException("批次不存在或批次下无工单: " + batchNum);
         }
+
+        for (MesWorkOrder workOrder : workOrders) {
+            MesCorrectionLog correctionLog = buildCorrectionLog(workOrder, operator, reason, "NOT_PULLED");
+            correctionLogMapper.insert(correctionLog);
+            workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+                .set(MesWorkOrder::getPrepackageStatus, "NOT_PULLED")
+                .set(MesWorkOrder::getRetryCount, 0)
+                .set(MesWorkOrder::getErrorMessage, null)
+                .eq(MesWorkOrder::getId, workOrder.getId()));
+            correctionLog.setResult("SUCCESS");
+            correctionLog.setUpdatedBy(operator);
+            correctionLog.setUpdatedTime(LocalDateTime.now());
+            correctionLogMapper.updateById(correctionLog);
+        }
+
+        log.info("已重置批次 {} 下全部工单为未拉取，数量: {}", batchNum, workOrders.size());
+        return workOrders.size();
+    }
+
+    private MesCorrectionLog buildCorrectionLog(MesWorkOrder workOrder, String operator, String reason, String newStatus) {
+        MesCorrectionLog correctionLog = new MesCorrectionLog();
+        correctionLog.setWorkOrderId(workOrder.getId());
+        correctionLog.setWorkId(workOrder.getWorkId());
+        correctionLog.setOperator(operator);
+        correctionLog.setOperationTime(LocalDateTime.now());
+        correctionLog.setCorrectionReason(reason);
+        correctionLog.setOldStatus(workOrder.getPrepackageStatus());
+        correctionLog.setNewStatus(newStatus);
+        correctionLog.setPartCountBefore(0);
+        correctionLog.setPartCountAfter(0);
+        correctionLog.setCreatedBy(operator);
+        correctionLog.setCreatedTime(LocalDateTime.now());
+        return correctionLog;
+    }
+
+    private List<Long> collectPrepackageOrderIds(List<MesPrepackageOrder> entities) {
+        List<Long> ids = new ArrayList<>();
+        for (MesPrepackageOrder entity : entities) {
+            if (entity.getId() != null) {
+                ids.add(entity.getId());
+            }
+        }
+        return ids;
+    }
+
+    private List<Long> collectBoxIds(List<MesBoxCode> entities) {
+        List<Long> ids = new ArrayList<>();
+        for (MesBoxCode entity : entities) {
+            if (entity.getId() != null) {
+                ids.add(entity.getId());
+            }
+        }
+        return ids;
+    }
+
+    private List<Long> collectPackageIds(List<MesPackage> entities) {
+        List<Long> ids = new ArrayList<>();
+        for (MesPackage entity : entities) {
+            if (entity.getId() != null) {
+                ids.add(entity.getId());
+            }
+        }
+        return ids;
     }
 
     /**

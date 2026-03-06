@@ -46,14 +46,10 @@ public class WorkOrderCorrectionController {
     private final PrePackageService prePackageService;
 
     /**
-     * 重新拉取工单预包装数据（数据修正）
-     *
-     * @param workId 工单号
-     * @param request 修正请求
-     * @return 修正结果
+     * 重置工单为未拉取状态，由定时任务后续执行拉取。
      */
     @PostMapping("/{workId}/repull")
-    @Operation(summary = "重新拉取工单数据", description = "管理员重新拉取工单预包装数据（数据修正），保留报工记录，软删除板件，物理删除包件/箱码/订单")
+    @Operation(summary = "重置工单重拉状态", description = "管理员将工单重置为未拉取状态，不立即调用第三方接口")
     public ResponseEntity<Map<String, Object>> repullWorkOrder(
             @Parameter(description = "工单号", required = true, example = "WO-001")
             @PathVariable String workId,
@@ -68,7 +64,7 @@ public class WorkOrderCorrectionController {
             prePackageService.repullWorkOrder(workId, request.getOperator(), request.getReason());
             
             response.put("success", true);
-            response.put("message", "工单数据修正成功");
+            response.put("message", "工单已重置为未拉取");
             response.put("workId", workId);
             response.put("timestamp", System.currentTimeMillis());
             
@@ -78,6 +74,37 @@ public class WorkOrderCorrectionController {
             log.error("工单数据修正失败: {}", e.getMessage(), e);
             response.put("success", false);
             response.put("error", "修正失败");
+            response.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * 重置批次下全部工单为未拉取状态。
+     */
+    @PostMapping("/batch/{batchNum}/repull")
+    @Operation(summary = "重置批次全部工单重拉状态", description = "管理员将指定批次下全部工单重置为未拉取状态，不立即调用第三方接口")
+    public ResponseEntity<Map<String, Object>> repullBatchWorkOrders(
+            @Parameter(description = "批次号", required = true, example = "BATCH-001")
+            @PathVariable String batchNum,
+            @RequestBody RepullRequest request) {
+
+        log.info("收到批次重拉状态重置请求，批次号: {}, 操作人: {}, 原因: {}",
+            batchNum, request.getOperator(), request.getReason());
+
+        Map<String, Object> response = new HashMap<>();
+        try {
+            int resetCount = prePackageService.repullBatchWorkOrders(batchNum, request.getOperator(), request.getReason());
+            response.put("success", true);
+            response.put("message", "批次工单已重置为未拉取");
+            response.put("batchNum", batchNum);
+            response.put("resetCount", resetCount);
+            response.put("timestamp", System.currentTimeMillis());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("批次工单重置失败: {}", e.getMessage(), e);
+            response.put("success", false);
+            response.put("error", "批次重置失败");
             response.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
