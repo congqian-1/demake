@@ -291,6 +291,10 @@ create table if not exists mes.mes_work_order
 )
     comment '工单表';
 
+alter table mes.mes_work_order
+    add constraint uk_batch_work
+        unique (batch_num, work_id);
+
 create index idx_batch_id
     on mes.mes_work_order (batch_id);
 
@@ -308,6 +312,18 @@ create index idx_prepackage_status
 
 create index idx_work_id
     on mes.mes_work_order (work_id);
+
+create index idx_batch_work_id_po
+    on mes.mes_prepackage_order (batch_num, work_id);
+
+create index idx_batch_work_id_box
+    on mes.mes_box (batch_num, work_id);
+
+create index idx_batch_work_id_pkg
+    on mes.mes_package (batch_num, work_id);
+
+create index idx_batch_work_id_part
+    on mes.mes_part (batch_num, work_id);
 
 create table if not exists mes.mes_work_order_correction_log
 (

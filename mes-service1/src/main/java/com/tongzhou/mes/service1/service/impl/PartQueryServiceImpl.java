@@ -74,10 +74,7 @@ public class PartQueryServiceImpl implements PartQueryService {
      * 检查工单状态
      */
     private void checkWorkOrderStatus(MesBoard board) {
-        MesWorkOrder workOrder = workOrderMapper.selectOne(
-            new LambdaQueryWrapper<MesWorkOrder>()
-                .eq(MesWorkOrder::getWorkId, board.getWorkId())
-        );
+        MesWorkOrder workOrder = resolveWorkOrder(board);
         if (workOrder != null && "UPDATING".equals(workOrder.getPrepackageStatus())) {
             log.warn("工单 {} 数据正在更新中，拒绝查询", workOrder.getWorkId());
             throw new WorkOrderUpdatingException(workOrder.getWorkId());
@@ -99,10 +96,7 @@ public class PartQueryServiceImpl implements PartQueryService {
             throw new PartNotFoundException(partCode);
         }
 
-        MesWorkOrder workOrder = workOrderMapper.selectOne(
-            new LambdaQueryWrapper<MesWorkOrder>()
-                .eq(MesWorkOrder::getWorkId, board.getWorkId())
-        );
+        MesWorkOrder workOrder = resolveWorkOrder(board);
         if (workOrder == null) {
             log.error("板件码 {} 关联的工单不存在，workId: {}", partCode, board.getWorkId());
             throw new RuntimeException("板件关联的工单不存在");
@@ -150,7 +144,7 @@ public class PartQueryServiceImpl implements PartQueryService {
         ResultPrepackageHierarchy response = new ResultPrepackageHierarchy();
         response.setCode("0");
         response.setMessage("OK");
-        response.setData(batchPackagingQueryService.getPrepackageHierarchy(null, board.getWorkId()));
+        response.setData(batchPackagingQueryService.getPrepackageHierarchy(board.getBatchNum(), null, board.getWorkId()));
 
         log.info("查询板件码 {} 的包装层级信息成功，工单号: {}", partCode, board.getWorkId());
         return response;
@@ -204,20 +198,14 @@ public class PartQueryServiceImpl implements PartQueryService {
             response.setBox(toBoxSummary(boxEntity));
         }
 
-        MesWorkOrder workOrder = null;
-        if (board.getWorkId() != null && !board.getWorkId().trim().isEmpty()) {
-            workOrder = workOrderMapper.selectOne(
-                new LambdaQueryWrapper<MesWorkOrder>()
-                    .eq(MesWorkOrder::getWorkId, board.getWorkId())
-            );
-        }
+        MesWorkOrder workOrder = resolveWorkOrder(board);
         if (workOrder != null) {
             response.setWorkOrder(toWorkOrderSummary(workOrder));
         }
 
         MesPrepackageOrder prepackageOrder = null;
         if (workOrder != null && workOrder.getWorkId() != null) {
-            prepackageOrder = prepackageOrderMapper.selectByWorkId(workOrder.getWorkId());
+            prepackageOrder = prepackageOrderMapper.selectByBatchNumAndWorkId(workOrder.getBatchNum(), workOrder.getWorkId());
         } else if (boxEntity != null && boxEntity.getPrepackageOrderId() != null) {
             prepackageOrder = prepackageOrderMapper.selectById(boxEntity.getPrepackageOrderId());
         }
@@ -251,6 +239,22 @@ public class PartQueryServiceImpl implements PartQueryService {
         log.info("查询板件码 {} 的详细信息成功", partCode);
 
         return response;
+    }
+
+    private MesWorkOrder resolveWorkOrder(MesBoard board) {
+        if (board.getWorkId() == null || board.getWorkId().trim().isEmpty()) {
+            return null;
+        }
+        if (board.getBatchNum() != null && !board.getBatchNum().trim().isEmpty()) {
+            MesWorkOrder workOrder = workOrderMapper.selectByBatchNumAndWorkId(board.getBatchNum(), board.getWorkId());
+            if (workOrder != null) {
+                return workOrder;
+            }
+        }
+        return workOrderMapper.selectOne(
+            new LambdaQueryWrapper<MesWorkOrder>()
+                .eq(MesWorkOrder::getWorkId, board.getWorkId())
+        );
     }
 
     private PartDetailResponse toPartDetailResponse(MesBoard board) {

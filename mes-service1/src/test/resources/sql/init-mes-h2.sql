@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS mes_work_order (
     updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE UNIQUE INDEX IF NOT EXISTS uk_batch_work_wo ON mes_work_order (batch_num, work_id);
 CREATE INDEX IF NOT EXISTS idx_work_id_wo ON mes_work_order (work_id);
 CREATE INDEX IF NOT EXISTS idx_batch_id_wo ON mes_work_order (batch_id);
 CREATE INDEX IF NOT EXISTS idx_is_deleted_wo ON mes_work_order (is_deleted);
@@ -110,6 +111,7 @@ CREATE TABLE IF NOT EXISTS mes_prepackage_order (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_work_order ON mes_prepackage_order (work_order_id);
+CREATE INDEX IF NOT EXISTS idx_batch_work_id_po ON mes_prepackage_order (batch_num, work_id);
 CREATE INDEX IF NOT EXISTS idx_batch_id_po ON mes_prepackage_order (batch_id);
 CREATE INDEX IF NOT EXISTS idx_batch_num_po ON mes_prepackage_order (batch_num);
 CREATE INDEX IF NOT EXISTS idx_is_deleted_po ON mes_prepackage_order (is_deleted);
@@ -137,6 +139,7 @@ CREATE TABLE IF NOT EXISTS mes_box (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_box_code ON mes_box (box_code);
+CREATE INDEX IF NOT EXISTS idx_batch_work_id_box ON mes_box (batch_num, work_id);
 CREATE INDEX IF NOT EXISTS idx_batch_num_box ON mes_box (batch_num);
 CREATE INDEX IF NOT EXISTS idx_is_deleted_box ON mes_box (is_deleted);
 CREATE INDEX IF NOT EXISTS idx_prepackage_order ON mes_box (prepackage_order_id);
@@ -164,6 +167,7 @@ CREATE TABLE IF NOT EXISTS mes_package (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_box_package ON mes_package (box_code, package_no);
+CREATE INDEX IF NOT EXISTS idx_batch_work_id_pkg ON mes_package (batch_num, work_id);
 CREATE INDEX IF NOT EXISTS idx_batch_num_pkg ON mes_package (batch_num);
 CREATE INDEX IF NOT EXISTS idx_box_id ON mes_package (box_id);
 CREATE INDEX IF NOT EXISTS idx_is_deleted_pkg ON mes_package (is_deleted);
@@ -199,6 +203,7 @@ CREATE TABLE IF NOT EXISTS mes_part (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS uk_part_code ON mes_part (part_code);
+CREATE INDEX IF NOT EXISTS idx_batch_work_id_part ON mes_part (batch_num, work_id);
 CREATE INDEX IF NOT EXISTS idx_batch_num_part ON mes_part (batch_num);
 CREATE INDEX IF NOT EXISTS idx_box_id_part ON mes_part (box_id);
 CREATE INDEX IF NOT EXISTS idx_is_deleted_part ON mes_part (is_deleted);

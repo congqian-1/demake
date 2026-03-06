@@ -53,7 +53,7 @@ public class MesWorkOrder {
     private String batchNum;
 
     /**
-     * 工单号（唯一）
+     * 工单号（与批次号组合唯一）
      */
     private String workId;
 

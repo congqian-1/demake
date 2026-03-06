@@ -71,8 +71,8 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
     }
 
     @Override
-    public PrepackageHierarchy getPrepackageHierarchy(String orderNum, String workId) {
-        MesPrepackageOrder prepackageOrder = findPrepackageOrder(orderNum, workId);
+    public PrepackageHierarchy getPrepackageHierarchy(String batchNum, String orderNum, String workId) {
+        MesPrepackageOrder prepackageOrder = findPrepackageOrder(batchNum, orderNum, workId);
 
         PrepackageHierarchy hierarchy = new PrepackageHierarchy();
         PrepackageOrderDTO dto = buildPrepackageHierarchy(prepackageOrder);
@@ -89,10 +89,14 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         return batch;
     }
 
-    private MesPrepackageOrder findPrepackageOrder(String orderNum, String workId) {
+    private MesPrepackageOrder findPrepackageOrder(String batchNum, String orderNum, String workId) {
         MesPrepackageOrder prepackageOrder = null;
         if (orderNum != null && !orderNum.trim().isEmpty()) {
             prepackageOrder = prepackageOrderMapper.selectByOrderNum(orderNum);
+        }
+        if (prepackageOrder == null && batchNum != null && !batchNum.trim().isEmpty()
+            && workId != null && !workId.trim().isEmpty()) {
+            prepackageOrder = prepackageOrderMapper.selectByBatchNumAndWorkId(batchNum, workId);
         }
         if (prepackageOrder == null && workId != null && !workId.trim().isEmpty()) {
             prepackageOrder = prepackageOrderMapper.selectByWorkId(workId);

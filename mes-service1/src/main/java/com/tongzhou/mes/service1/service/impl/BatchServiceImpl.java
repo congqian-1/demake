@@ -84,7 +84,7 @@ public class BatchServiceImpl implements BatchService {
             }
 
             for (BatchPushRequest.WorkOrderInfo orderInfo : fileInfo.getWorkOrders()) {
-                MesWorkOrder existingWorkOrder = workOrderMapper.selectByOptimizingFileIdAndWorkId(file.getId(), orderInfo.getWorkId());
+                MesWorkOrder existingWorkOrder = workOrderMapper.selectByBatchNumAndWorkId(batchNum, orderInfo.getWorkId());
                 if (existingWorkOrder == null) {
                     MesWorkOrder workOrder = batchConverter.toMesWorkOrder(orderInfo, batchNum, batchId, file.getId());
                     workOrderMapper.insert(workOrder);

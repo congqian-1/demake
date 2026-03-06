@@ -33,5 +33,5 @@ public interface BatchPackagingQueryService {
     /**
      * Get full prepackage hierarchy by order number or workId.
      */
-    PrepackageHierarchy getPrepackageHierarchy(String orderNum, String workId);
+    PrepackageHierarchy getPrepackageHierarchy(String batchNum, String orderNum, String workId);
 }

@@ -240,6 +240,30 @@ class MesIntegrationSpecTest {
     }
 
     @Test
+    void story1_batchPush_shouldAllowSameWorkIdAcrossDifferentBatches() throws Exception {
+        String workId = unique("WO");
+        String batchNum1 = unique("BATCH");
+        String batchNum2 = unique("BATCH");
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildBatchRequest(batchNum1, Arrays.asList(workId)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true));
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildBatchRequest(batchNum2, Arrays.asList(workId)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true));
+
+        assertEquals(2L, workOrderMapper.selectCount(
+            new LambdaQueryWrapper<MesWorkOrder>().eq(MesWorkOrder::getWorkId, workId)));
+        assertEquals(batchNum1, getWorkOrder(batchNum1, workId).getBatchNum());
+        assertEquals(batchNum2, getWorkOrder(batchNum2, workId).getBatchNum());
+    }
+
+    @Test
     void story2_pullPending_shouldPersistAllLevels_andStandardList() throws Exception {
         String batchNum = unique("BATCH");
         String workId = unique("WO");
@@ -592,6 +616,41 @@ class MesIntegrationSpecTest {
     }
 
     @Test
+    void story7_overwriteShouldKeepDeletedBoardsHiddenFromQueries() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId = unique("WO");
+        pushBatch(batchNum, workId);
+        prePackagePullTask.pullPrePackageData();
+
+        List<MesBoard> originalBoards = boardMapper.selectList(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getWorkId, workId)
+                .eq(MesBoard::getIsDeleted, 0)
+                .orderByAsc(MesBoard::getPartCode));
+        assertEquals(3, originalBoards.size());
+
+        String deletedPartCode = originalBoards.get(2).getPartCode();
+        List<String> partCodesToKeep = Arrays.asList(originalBoards.get(0).getPartCode(), originalBoards.get(1).getPartCode());
+        Mockito.doReturn(buildDtoWithPartCodes(batchNum, workId, partCodesToKeep))
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(batchNum, workId);
+
+        mockMvc.perform(post("/api/v1/admin/work-order/{workId}/repull", workId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"operator\":\"tester\",\"reason\":\"hide-deleted\"}"))
+            .andExpect(status().isOk());
+
+        prePackagePullTask.pullPrePackageData();
+
+        mockMvc.perform(get("/api/v1/production/part/{partCode}/detail", deletedPartCode))
+            .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/api/v1/production/part/{partCode}/package", partCodesToKeep.get(0)))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts.length()").value(2));
+    }
+
+    @Test
     void story7_batchRepull_shouldResetAllWorkOrdersToNotPulled() throws Exception {
         String batchNum = unique("BATCH");
         String workId1 = unique("WO");
@@ -629,6 +688,15 @@ class MesIntegrationSpecTest {
     private MesWorkOrder getWorkOrder(String workId) {
         MesWorkOrder workOrder = workOrderMapper.selectOne(
             new LambdaQueryWrapper<MesWorkOrder>().eq(MesWorkOrder::getWorkId, workId));
+        assertNotNull(workOrder);
+        return workOrder;
+    }
+
+    private MesWorkOrder getWorkOrder(String batchNum, String workId) {
+        MesWorkOrder workOrder = workOrderMapper.selectOne(
+            new LambdaQueryWrapper<MesWorkOrder>()
+                .eq(MesWorkOrder::getBatchNum, batchNum)
+                .eq(MesWorkOrder::getWorkId, workId));
         assertNotNull(workOrder);
         return workOrder;
     }

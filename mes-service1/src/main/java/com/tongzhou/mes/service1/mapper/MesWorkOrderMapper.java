@@ -55,10 +55,10 @@ public interface MesWorkOrderMapper extends BaseMapper<MesWorkOrder> {
     int physicalDeleteByBatchId(@Param("batchId") Long batchId);
 
     /**
-     * Select a work order by optimizing file and work id.
+     * Select a work order by batch number and work id.
      */
-    @Select("SELECT * FROM mes_work_order WHERE optimizing_file_id = #{optimizingFileId} AND work_id = #{workId} AND is_deleted = 0")
-    MesWorkOrder selectByOptimizingFileIdAndWorkId(@Param("optimizingFileId") Long optimizingFileId, @Param("workId") String workId);
+    @Select("SELECT * FROM mes_work_order WHERE batch_num = #{batchNum} AND work_id = #{workId} AND is_deleted = 0")
+    MesWorkOrder selectByBatchNumAndWorkId(@Param("batchNum") String batchNum, @Param("workId") String workId);
 
     /**
      * Select work orders by batch number.

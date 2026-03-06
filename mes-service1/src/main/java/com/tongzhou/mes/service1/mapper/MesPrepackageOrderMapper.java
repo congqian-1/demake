@@ -60,6 +60,12 @@ public interface MesPrepackageOrderMapper extends BaseMapper<MesPrepackageOrder>
     MesPrepackageOrder selectByWorkId(@Param("workId") String workId);
 
     /**
+     * Select prepackage order by batch number and work id.
+     */
+    @Select("SELECT * FROM mes_prepackage_order WHERE batch_num = #{batchNum} AND work_id = #{workId} AND is_deleted = 0")
+    MesPrepackageOrder selectByBatchNumAndWorkId(@Param("batchNum") String batchNum, @Param("workId") String workId);
+
+    /**
      * Physically delete prepackage orders by workId to avoid unique key conflicts during overwrite pulls.
      */
     @Delete("DELETE FROM mes_prepackage_order WHERE work_id = #{workId}")
