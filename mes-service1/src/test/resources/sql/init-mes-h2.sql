@@ -194,6 +194,8 @@ CREATE TABLE IF NOT EXISTS mes_part (
     sort_order INT,
     standard_list VARCHAR(2000),
     standard_code VARCHAR(128),
+    rotate VARCHAR(32),
+    process_code VARCHAR(128),
     real_package_no VARCHAR(100),
     is_deleted TINYINT DEFAULT 0,
     created_by VARCHAR(100),

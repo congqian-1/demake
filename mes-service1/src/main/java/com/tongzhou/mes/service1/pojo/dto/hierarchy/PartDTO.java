@@ -68,6 +68,10 @@ public class PartDTO {
     private Integer sortOrder;
     @Schema(description = "标准码")
     private String standardCode;
+    @Schema(description = "旋转字段")
+    private String rotate;
+    @Schema(description = "工艺代码")
+    private String processCode;
     @Schema(description = "标准码原始JSON")
     private String standardList;
     @Schema(description = "真实打包包号", example = "PKG-REAL-001")

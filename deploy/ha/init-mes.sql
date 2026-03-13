@@ -175,6 +175,8 @@ create table if not exists mes.mes_part
     sort_order    int                                null comment '分拣出板顺序',
     standard_list json                               null comment '标准码集合（JSON格式，如[{"00041":1,"00311":1}]）',
     standard_code varchar(128)                       null comment '标准码',
+    rotate        varchar(32)                        null comment '旋转字段',
+    process_code  varchar(128)                       null comment '工艺代码',
     real_package_no varchar(100)                     null comment '真实打包包号',
     is_deleted    tinyint  default 0                 null comment '删除标识（0=正常，1=已删除/关联板件已失效）',
     created_by    varchar(100)                       null comment '创建人',

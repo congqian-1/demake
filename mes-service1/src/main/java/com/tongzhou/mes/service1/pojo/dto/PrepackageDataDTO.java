@@ -17,6 +17,7 @@
 
 package com.tongzhou.mes.service1.pojo.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -229,6 +230,14 @@ public class PrepackageDataDTO {
 
         @JsonProperty("StandardCode")
         private String standardCode; // 标准码
+
+        @JsonProperty("Rotate")
+        @JsonAlias({"rotate"})
+        private String rotate; // 旋转字段
+
+        @JsonProperty("ProcessCode")
+        @JsonAlias({"processCode", "process_code"})
+        private String processCode; // 工艺代码
 
         @JsonProperty("StandardList")
         private String standardListJson; // 标准码集合（JSON格式）

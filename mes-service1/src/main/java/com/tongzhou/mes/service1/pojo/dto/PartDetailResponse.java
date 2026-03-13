@@ -93,6 +93,12 @@ public class PartDetailResponse {
     @Schema(description = "标准码")
     private String standardCode;
 
+    @Schema(description = "旋转字段")
+    private String rotate;
+
+    @Schema(description = "工艺代码")
+    private String processCode;
+
     @Schema(description = "标准码列表（解析后的Map列表）")
     private List<Map<String, Integer>> standardList;
 

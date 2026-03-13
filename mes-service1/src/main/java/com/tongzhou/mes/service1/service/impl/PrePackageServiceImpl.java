@@ -397,6 +397,8 @@ public class PrePackageServiceImpl implements PrePackageService {
                                 board.setZAxis(partInfo.getZAxis());
                                 board.setSortOrder(partInfo.getSortOrder());
                                 board.setStandardCode(partInfo.getStandardCode());
+                                board.setRotate(partInfo.getRotate());
+                                board.setProcessCode(partInfo.getProcessCode());
                                 board.setStandardList(partInfo.getStandardListJson());
                                 board.setIsDeleted(0);
                                 board.setUpdatedTime(LocalDateTime.now());

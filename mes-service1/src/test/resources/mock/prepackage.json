@@ -57,6 +57,8 @@
                 "ZAxis": 3,
                 "SortOrder": 1,
                 "StandardCode": "STD-A",
+                "Rotate": "0",
+                "ProcessCode": "PROC-A",
                 "StandardList": "[\"STD-A\"]"
               },
               {
@@ -74,6 +76,8 @@
                 "ZAxis": 6,
                 "SortOrder": 2,
                 "StandardCode": "STD-B",
+                "Rotate": "1",
+                "ProcessCode": "PROC-B",
                 "StandardList": "[\"STD-B\"]"
               }
             ]
@@ -114,6 +118,8 @@
                 "ZAxis": 9,
                 "SortOrder": 3,
                 "StandardCode": "STD-C",
+                "Rotate": "0",
+                "ProcessCode": "PROC-C",
                 "StandardList": "[\"STD-C\"]"
               }
             ]

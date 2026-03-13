@@ -17,6 +17,7 @@
 
 package com.tongzhou.mes.service1.pojo.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
@@ -110,6 +111,10 @@ public class ThirdPartyPrepackageResponseDTO {
         @JsonProperty("zAxis")
         private String zAxis;
         private String standardCode;
+        @JsonAlias({"Rotate"})
+        private String rotate;
+        @JsonAlias({"ProcessCode", "process_code"})
+        private String processCode;
         private Integer condition;
     }
 }

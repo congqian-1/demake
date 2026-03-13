@@ -278,6 +278,8 @@ public class PartQueryServiceImpl implements PartQueryService {
         response.setZAxis(board.getZAxis());
         response.setSortOrder(board.getSortOrder());
         response.setStandardCode(board.getStandardCode());
+        response.setRotate(board.getRotate());
+        response.setProcessCode(board.getProcessCode());
         response.setRealPackageNo(board.getRealPackageNo());
         response.setIsDeleted(board.getIsDeleted());
         response.setCreatedTime(board.getCreatedTime());

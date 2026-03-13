@@ -134,6 +134,16 @@ public class MesBoard {
     private String standardCode;
 
     /**
+     * 旋转字段
+     */
+    private String rotate;
+
+    /**
+     * 工艺代码
+     */
+    private String processCode;
+
+    /**
      * 真实打包包号
      */
     private String realPackageNo;

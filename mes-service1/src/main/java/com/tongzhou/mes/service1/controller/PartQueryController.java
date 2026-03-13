@@ -63,7 +63,7 @@ public class PartQueryController {
      * @return 工单、优化文件、批次信息
      */
     @GetMapping("/{partCode}/work-order-and-batch")
-    @Operation(summary = "查询批次层级", description = "根据板件码查询对应批次及其完整层级结构")
+    @Operation(summary = "查询批次层级", description = "根据板件码查询对应批次及其完整层级结构，板件节点包含 rotate、processCode 等字段")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Batch hierarchy result",
             content = @Content(schema = @Schema(implementation = ResultBatchHierarchy.class))),
@@ -89,7 +89,7 @@ public class PartQueryController {
      * @return 箱码、订单、板件位置信息
      */
     @GetMapping("/{partCode}/package")
-    @Operation(summary = "查询包装层级", description = "根据板件码查询对应预包装订单及其完整层级结构")
+    @Operation(summary = "查询包装层级", description = "根据板件码查询对应预包装订单及其完整层级结构，板件节点包含 rotate、processCode 等字段")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Prepackage hierarchy result",
             content = @Content(schema = @Schema(implementation = ResultPrepackageHierarchy.class))),
@@ -115,7 +115,7 @@ public class PartQueryController {
      * @return 板件详细信息
      */
     @GetMapping("/{partCode}/detail")
-    @Operation(summary = "查询板件详细信息", description = "根据板件码查询板件自身与上层层级实体信息")
+    @Operation(summary = "查询板件详细信息", description = "根据板件码查询板件自身与上层层级实体信息，返回 rotate、processCode 等完整板件属性")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Part detail",
             content = @Content(schema = @Schema(implementation = PartDetailResponse.class))),

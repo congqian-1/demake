@@ -367,6 +367,7 @@ class MesIntegrationSpecTest {
             new LambdaQueryWrapper<MesBoard>()
                 .eq(MesBoard::getWorkId, workId)
                 .eq(MesBoard::getIsDeleted, 0)
+                .orderByAsc(MesBoard::getPartCode)
                 .last("LIMIT 1"));
         assertNotNull(board);
         assertNotNull(board.getStandardList());
@@ -382,7 +383,22 @@ class MesIntegrationSpecTest {
         assertNotNull(board.getYAxis());
         assertNotNull(board.getZAxis());
         assertNotNull(board.getSortOrder());
+        assertNotNull(board.getRotate());
+        assertNotNull(board.getProcessCode());
         assertEquals(0, board.getIsDeleted());
+
+        List<MesBoard> boards = boardMapper.selectList(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getWorkId, workId)
+                .eq(MesBoard::getIsDeleted, 0)
+                .orderByAsc(MesBoard::getPartCode));
+        assertEquals(3, boards.size());
+        assertEquals("0", boards.get(0).getRotate());
+        assertEquals("PROC-A", boards.get(0).getProcessCode());
+        assertEquals("1", boards.get(1).getRotate());
+        assertEquals("PROC-B", boards.get(1).getProcessCode());
+        assertEquals("0", boards.get(2).getRotate());
+        assertEquals("PROC-C", boards.get(2).getProcessCode());
     }
 
     @Test
@@ -463,16 +479,22 @@ class MesIntegrationSpecTest {
         mockMvc.perform(get("/api/v1/production/part/{partCode}/work-order-and-batch", partCode))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].workId").value(workId))
-            .andExpect(jsonPath("$.data.batch.batchNum").value(batchNum));
+            .andExpect(jsonPath("$.data.batch.batchNum").value(batchNum))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].rotate").value("0"))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].processCode").value("PROC-A"));
 
         mockMvc.perform(get("/api/v1/production/part/{partCode}/package", partCode))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].boxCode").value(box.getBoxCode()));
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].boxCode").value(box.getBoxCode()))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].rotate").value("0"))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].processCode").value("PROC-A"));
 
         mockMvc.perform(get("/api/v1/production/part/{partCode}/detail", partCode))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.partCode").value(partCode))
-            .andExpect(jsonPath("$.standardListRaw").isNotEmpty());
+            .andExpect(jsonPath("$.standardListRaw").isNotEmpty())
+            .andExpect(jsonPath("$.rotate").value("0"))
+            .andExpect(jsonPath("$.processCode").value("PROC-A"));
 
         // 状态为 UPDATING 时返回 409
         MesWorkOrder workOrder = getWorkOrder(workId);
@@ -584,6 +606,10 @@ class MesIntegrationSpecTest {
         // 重新拉取：只保留2个板件（模拟上游删除1个板件）
         List<String> partCodesToKeep = Arrays.asList(originalBoards.get(0).getPartCode(), originalBoards.get(1).getPartCode());
         PrepackageDataDTO repullDto = buildDtoWithPartCodes(batchNum, workId, partCodesToKeep);
+        repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(0).setRotate("9");
+        repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(0).setProcessCode("PROC-REFRESH-1");
+        repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(1).setRotate("8");
+        repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(1).setProcessCode("PROC-REFRESH-2");
         Mockito.doReturn(repullDto)
             .when(thirdPartyMesClient)
             .getPrepackageInfo(batchNum, workId);
@@ -609,6 +635,14 @@ class MesIntegrationSpecTest {
         long deletedBoards = boardMapper.countDeletedByWorkId(workId);
         assertEquals(2L, activeBoards);
         assertTrue(deletedBoards >= 1);
+
+        MesBoard refreshedBoard = boardMapper.selectOne(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getPartCode, partCodesToKeep.get(0))
+                .eq(MesBoard::getIsDeleted, 0));
+        assertNotNull(refreshedBoard);
+        assertEquals("9", refreshedBoard.getRotate());
+        assertEquals("PROC-REFRESH-1", refreshedBoard.getProcessCode());
 
         long reports = workReportMapper.selectCount(
             new LambdaQueryWrapper<MesWorkReport>().eq(MesWorkReport::getPartCode, partWithReport));
@@ -647,7 +681,9 @@ class MesIntegrationSpecTest {
 
         mockMvc.perform(get("/api/v1/production/part/{partCode}/package", partCodesToKeep.get(0)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts.length()").value(2));
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts.length()").value(2))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].rotate").isNotEmpty())
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].processCode").isNotEmpty());
     }
 
     @Test

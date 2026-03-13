@@ -171,6 +171,8 @@ public class ThirdPartyPrepackageMapper {
             dto.setZAxis(part.getZAxis());
             dto.setSortOrder(part.getSortOrder());
             dto.setStandardCode(part.getStandardCode());
+            dto.setRotate(part.getRotate());
+            dto.setProcessCode(part.getProcessCode());
             dto.setStandardListJson(null);
             parts.add(dto);
         }
