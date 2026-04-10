@@ -94,6 +94,8 @@ CREATE TABLE IF NOT EXISTS mes_prepackage_order (
     space VARCHAR(100),
     pack_type VARCHAR(50),
     product_type VARCHAR(50),
+    type VARCHAR(64),
+    fdd8 VARCHAR(128),
     prepackage_info_size INT,
     total_set INT,
     max_package_no INT,

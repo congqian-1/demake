@@ -312,6 +312,8 @@ public class PrePackageServiceImpl implements PrePackageService {
         order.setSpace(info.getSpace());
         order.setPackType(info.getPackType());
         order.setProductType(info.getProductType());
+        order.setType(info.getType());
+        order.setFdd8(info.getFdd8());
         order.setPrepackageInfoSize(info.getPrepackageInfoSize());
         order.setTotalSet(info.getTotalSet());
         order.setMaxPackageNo(info.getMaxPackageNo());

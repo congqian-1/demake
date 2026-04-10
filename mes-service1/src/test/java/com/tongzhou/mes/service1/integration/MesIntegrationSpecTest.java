@@ -292,6 +292,8 @@ class MesIntegrationSpecTest {
         assertEquals("Mock Space", order.getSpace());
         assertEquals("Mock PackType", order.getPackType());
         assertEquals("Mock ProductType", order.getProductType());
+        assertEquals("TYPE-" + batchNum, order.getType());
+        assertEquals("FDD8-" + batchNum + "-" + workId, order.getFdd8());
         assertEquals(2, order.getPrepackageInfoSize());
         assertEquals(1, order.getTotalSet());
         assertEquals(2, order.getMaxPackageNo());
@@ -480,12 +482,16 @@ class MesIntegrationSpecTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].workId").value(workId))
             .andExpect(jsonPath("$.data.batch.batchNum").value(batchNum))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.type").value("TYPE-" + batchNum))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.fdd8").value("FDD8-" + batchNum + "-" + workId))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].rotate").value("0"))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].processCode").value("PROC-A"));
 
         mockMvc.perform(get("/api/v1/production/part/{partCode}/package", partCode))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].boxCode").value(box.getBoxCode()))
+            .andExpect(jsonPath("$.data.prepackageOrder.type").value("TYPE-" + batchNum))
+            .andExpect(jsonPath("$.data.prepackageOrder.fdd8").value("FDD8-" + batchNum + "-" + workId))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].rotate").value("0"))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].processCode").value("PROC-A"));
 
@@ -493,6 +499,8 @@ class MesIntegrationSpecTest {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.partCode").value(partCode))
             .andExpect(jsonPath("$.standardListRaw").isNotEmpty())
+            .andExpect(jsonPath("$.prepackageOrder.type").value("TYPE-" + batchNum))
+            .andExpect(jsonPath("$.prepackageOrder.fdd8").value("FDD8-" + batchNum + "-" + workId))
             .andExpect(jsonPath("$.rotate").value("0"))
             .andExpect(jsonPath("$.processCode").value("PROC-A"));
 
@@ -606,6 +614,8 @@ class MesIntegrationSpecTest {
         // 重新拉取：只保留2个板件（模拟上游删除1个板件）
         List<String> partCodesToKeep = Arrays.asList(originalBoards.get(0).getPartCode(), originalBoards.get(1).getPartCode());
         PrepackageDataDTO repullDto = buildDtoWithPartCodes(batchNum, workId, partCodesToKeep);
+        repullDto.getPrePackageInfo().setType("TYPE-REFRESH");
+        repullDto.getPrePackageInfo().setFdd8("FDD8-REFRESH");
         repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(0).setRotate("9");
         repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(0).setProcessCode("PROC-REFRESH-1");
         repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(1).setRotate("8");
@@ -643,6 +653,14 @@ class MesIntegrationSpecTest {
         assertNotNull(refreshedBoard);
         assertEquals("9", refreshedBoard.getRotate());
         assertEquals("PROC-REFRESH-1", refreshedBoard.getProcessCode());
+
+        com.tongzhou.mes.service1.pojo.entity.MesPrepackageOrder refreshedOrder =
+            prepackageOrderMapper.selectOne(
+                new LambdaQueryWrapper<com.tongzhou.mes.service1.pojo.entity.MesPrepackageOrder>()
+                    .eq(com.tongzhou.mes.service1.pojo.entity.MesPrepackageOrder::getWorkId, workId));
+        assertNotNull(refreshedOrder);
+        assertEquals("TYPE-REFRESH", refreshedOrder.getType());
+        assertEquals("FDD8-REFRESH", refreshedOrder.getFdd8());
 
         long reports = workReportMapper.selectCount(
             new LambdaQueryWrapper<MesWorkReport>().eq(MesWorkReport::getPartCode, partWithReport));

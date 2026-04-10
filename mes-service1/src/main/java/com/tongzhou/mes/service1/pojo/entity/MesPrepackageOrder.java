@@ -123,6 +123,16 @@ public class MesPrepackageOrder {
     private String productType;
 
     /**
+     * 类型（第三方 type）
+     */
+    private String type;
+
+    /**
+     * 扩展字段（第三方 FDD8）
+     */
+    private String fdd8;
+
+    /**
      * 预包装总包数
      */
     private Integer prepackageInfoSize;

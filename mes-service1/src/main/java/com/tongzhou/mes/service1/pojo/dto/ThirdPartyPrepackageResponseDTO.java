@@ -56,6 +56,11 @@ public class ThirdPartyPrepackageResponseDTO {
         private String detailedAddress;
         private String consignor;
         private String productType;
+        @JsonAlias({"Type"})
+        private String type;
+        @JsonProperty("FDD8")
+        @JsonAlias({"fdd8"})
+        private String fdd8;
         private String customer;
         private List<PrePackageInfoItem> prePackageInfo;
     }

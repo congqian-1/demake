@@ -94,6 +94,8 @@ public class ThirdPartyPrepackageMapper {
         info.setSpace(target.getSpace());
         info.setPackType(target.getPackType());
         info.setProductType(target.getProductType());
+        info.setType(target.getType());
+        info.setFdd8(target.getFdd8());
         info.setPrepackageInfoSize(target.getPrePackageInfoSize());
         info.setTotalSet(target.getTotalSet());
         info.setMaxPackageNo(target.getMaxPackageNo());

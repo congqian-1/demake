@@ -372,6 +372,8 @@ public class PartQueryServiceImpl implements PartQueryService {
         summary.setSpace(order.getSpace());
         summary.setPackType(order.getPackType());
         summary.setProductType(order.getProductType());
+        summary.setType(order.getType());
+        summary.setFdd8(order.getFdd8());
         summary.setPrepackageInfoSize(order.getPrepackageInfoSize());
         summary.setTotalSet(order.getTotalSet());
         summary.setMaxPackageNo(order.getMaxPackageNo());

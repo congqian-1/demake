@@ -64,6 +64,8 @@ public class ThirdPartyMesClientMockConfiguration {
         info.put("WorkNum", safeWorkId);
         info.put("ShipBatch", "SHIP-" + safeBatchNum);
         info.put("ProductionNum", "PROD-" + key);
+        info.put("type", "TYPE-" + safeBatchNum);
+        info.put("FDD8", "FDD8-" + key);
 
         ArrayNode boxInfoDetails = info.withArray("BoxInfoDetails");
         int partIndex = 1;

@@ -224,6 +224,8 @@ create table if not exists mes.mes_prepackage_order
     space                varchar(100)                       null comment '产品所属空间',
     pack_type            varchar(50)                        null comment '包件类型',
     product_type         varchar(50)                        null comment '产品类型',
+    type                 varchar(64)                        null comment '类型（第三方 type）',
+    fdd8                 varchar(128)                       null comment '扩展字段（第三方 FDD8）',
     prepackage_info_size int                                null comment '预包装总包数',
     total_set            int                                null comment '总套数',
     max_package_no       int                                null comment '一套内的总包数',

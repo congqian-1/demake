@@ -80,6 +80,12 @@ public class PrepackageOrderSummary {
     @Schema(description = "产品类型")
     private String productType;
 
+    @Schema(description = "类型（第三方 type）")
+    private String type;
+
+    @Schema(description = "扩展字段（第三方 FDD8）")
+    private String fdd8;
+
     @Schema(description = "预包装总包数")
     private Integer prepackageInfoSize;
 

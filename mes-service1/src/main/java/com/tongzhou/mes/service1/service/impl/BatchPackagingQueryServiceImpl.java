@@ -385,6 +385,8 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         dto.setSpace(order.getSpace());
         dto.setPackType(order.getPackType());
         dto.setProductType(order.getProductType());
+        dto.setType(order.getType());
+        dto.setFdd8(order.getFdd8());
         dto.setPrepackageInfoSize(order.getPrepackageInfoSize());
         dto.setTotalSet(order.getTotalSet());
         dto.setMaxPackageNo(order.getMaxPackageNo());

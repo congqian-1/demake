@@ -13,6 +13,8 @@
     "Space": "Mock Space",
     "PackType": "Mock PackType",
     "ProductType": "Mock ProductType",
+    "type": "TYPE-TEMPLATE",
+    "FDD8": "FDD8-TEMPLATE",
     "PrepackageInfoSize": 2,
     "TotalSet": 1,
     "MaxPackageNo": 2,

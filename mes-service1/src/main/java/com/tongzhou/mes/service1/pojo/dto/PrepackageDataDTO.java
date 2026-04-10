@@ -84,6 +84,14 @@ public class PrepackageDataDTO {
         @JsonProperty("ProductType")
         private String productType; // 产品类型
 
+        @JsonProperty("type")
+        @JsonAlias({"Type"})
+        private String type; // 类型
+
+        @JsonProperty("FDD8")
+        @JsonAlias({"fdd8"})
+        private String fdd8; // 扩展字段
+
         @JsonProperty("PrepackageInfoSize")
         private Integer prepackageInfoSize; // 预包装总包数
 
