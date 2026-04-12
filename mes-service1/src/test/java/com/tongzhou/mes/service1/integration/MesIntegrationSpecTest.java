@@ -644,7 +644,7 @@ class MesIntegrationSpecTest {
                 .eq(MesBoard::getIsDeleted, 0));
         long deletedBoards = boardMapper.countDeletedByWorkId(workId);
         assertEquals(2L, activeBoards);
-        assertTrue(deletedBoards >= 1);
+        assertEquals(0L, deletedBoards);
 
         MesBoard refreshedBoard = boardMapper.selectOne(
             new LambdaQueryWrapper<MesBoard>()
@@ -702,6 +702,69 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts.length()").value(2))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].rotate").isNotEmpty())
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].processCode").isNotEmpty());
+    }
+
+    @Test
+    void story7_overwriteShouldRevivePreviouslyDeletedPartCodeWithoutUniqueConflict() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId = unique("WO");
+        pushBatch(batchNum, workId);
+        prePackagePullTask.pullPrePackageData();
+
+        List<MesBoard> originalBoards = boardMapper.selectList(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getWorkId, workId)
+                .eq(MesBoard::getIsDeleted, 0)
+                .orderByAsc(MesBoard::getPartCode));
+        assertEquals(3, originalBoards.size());
+
+        List<String> allPartCodes = Arrays.asList(
+            originalBoards.get(0).getPartCode(),
+            originalBoards.get(1).getPartCode(),
+            originalBoards.get(2).getPartCode()
+        );
+        List<String> reducedPartCodes = Arrays.asList(allPartCodes.get(0), allPartCodes.get(1));
+        String revivedPartCode = allPartCodes.get(2);
+
+        Mockito.doReturn(buildDtoWithPartCodes(batchNum, workId, reducedPartCodes))
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(batchNum, workId);
+
+        mockMvc.perform(post("/api/v1/admin/work-order/{workId}/repull", workId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"operator\":\"tester\",\"reason\":\"remove-part\"}"))
+            .andExpect(status().isOk());
+        prePackagePullTask.pullPrePackageData();
+        assertEquals("PULLED", waitForWorkOrderStatus(workId, "PULLED", 5000).getPrepackageStatus());
+
+        long afterRemoveActiveCount = boardMapper.selectCount(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getWorkId, workId)
+                .eq(MesBoard::getIsDeleted, 0));
+        assertEquals(2L, afterRemoveActiveCount);
+
+        Mockito.doReturn(buildDtoWithPartCodes(batchNum, workId, allPartCodes))
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(batchNum, workId);
+
+        mockMvc.perform(post("/api/v1/admin/work-order/{workId}/repull", workId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"operator\":\"tester\",\"reason\":\"restore-part\"}"))
+            .andExpect(status().isOk());
+        prePackagePullTask.pullPrePackageData();
+        assertEquals("PULLED", waitForWorkOrderStatus(workId, "PULLED", 5000).getPrepackageStatus());
+
+        long afterRestoreActiveCount = boardMapper.selectCount(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getWorkId, workId)
+                .eq(MesBoard::getIsDeleted, 0));
+        assertEquals(3L, afterRestoreActiveCount);
+
+        MesBoard revivedBoard = boardMapper.selectOne(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getPartCode, revivedPartCode)
+                .eq(MesBoard::getIsDeleted, 0));
+        assertNotNull(revivedBoard);
     }
 
     @Test

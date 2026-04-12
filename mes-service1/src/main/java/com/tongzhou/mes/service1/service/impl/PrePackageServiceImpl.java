@@ -448,24 +448,12 @@ public class PrePackageServiceImpl implements PrePackageService {
             ? new ArrayList<>()
             : packageMapper.selectByBoxIds(existingBoxIds);
         List<Long> existingPackageIds = collectPackageIds(existingPackages);
-        List<MesBoard> existingBoards = existingPackageIds.isEmpty()
-            ? new ArrayList<>()
-            : boardMapper.selectByPackageIds(existingPackageIds);
-        Map<String, MesBoard> existingBoardsByPartCode = new HashMap<>();
-        for (MesBoard board : existingBoards) {
-            existingBoardsByPartCode.put(board.getPartCode(), board);
-        }
 
         int deletedBoards = 0;
         if (!existingPackageIds.isEmpty()) {
-            deletedBoards = boardMapper.update(null,
-                new LambdaUpdateWrapper<MesBoard>()
-                    .set(MesBoard::getIsDeleted, 1)
-                    .set(MesBoard::getUpdatedTime, LocalDateTime.now())
-                    .in(MesBoard::getPackageId, existingPackageIds)
-            );
+            deletedBoards = boardMapper.physicalDeleteByPackageIds(existingPackageIds);
         }
-        log.info("软删除旧板件数量: {}", deletedBoards);
+        log.info("物理删除旧板件数量: {}", deletedBoards);
 
         int deletedPackages = 0;
         if (!existingBoxIds.isEmpty()) {
@@ -483,7 +471,7 @@ public class PrePackageServiceImpl implements PrePackageService {
         log.info("物理删除旧预包装订单数量: {}", deletedOrders);
 
         // 5. 插入新的预包装数据（复用原有的保存逻辑）
-        savePrePackageDataInternal(workOrder, data, existingBoardsByPartCode);
+        savePrePackageDataInternal(workOrder, data, null);
 
         log.info("预包装数据覆盖完成，工单号: {}", workId);
     }

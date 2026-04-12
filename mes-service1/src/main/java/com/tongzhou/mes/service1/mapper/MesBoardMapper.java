@@ -19,6 +19,7 @@ package com.tongzhou.mes.service1.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.tongzhou.mes.service1.pojo.entity.MesBoard;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
@@ -46,6 +47,36 @@ public interface MesBoardMapper extends BaseMapper<MesBoard> {
         "AND is_deleted = 0",
         "</script>"})
     List<MesBoard> selectByPackageIds(@Param("packageIds") List<Long> packageIds);
+
+    /**
+     * Select boards by package ids and include logically deleted rows.
+     */
+    @Select({"<script>",
+        "SELECT * FROM mes_part",
+        "WHERE package_id IN",
+        "<foreach collection='packageIds' item='id' open='(' separator=',' close=')'>",
+        "#{id}",
+        "</foreach>",
+        "</script>"})
+    List<MesBoard> selectByPackageIdsIncludeDeleted(@Param("packageIds") List<Long> packageIds);
+
+    /**
+     * Physically delete boards by package ids during overwrite pulls.
+     */
+    @Delete({"<script>",
+        "DELETE FROM mes_part WHERE package_id IN",
+        "<foreach collection='packageIds' item='id' open='(' separator=',' close=')'>",
+        "#{id}",
+        "</foreach>",
+        "</script>"})
+    int physicalDeleteByPackageIds(@Param("packageIds") List<Long> packageIds);
+
+    /**
+     * Select boards by batch/work and include logically deleted rows.
+     */
+    @Select("SELECT * FROM mes_part WHERE batch_num = #{batchNum} AND work_id = #{workId}")
+    List<MesBoard> selectByBatchNumAndWorkIdIncludeDeleted(@Param("batchNum") String batchNum,
+                                                            @Param("workId") String workId);
 
     /**
      * Revive a logically deleted board so that subsequent updateById can succeed.
