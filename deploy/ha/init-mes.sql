@@ -47,8 +47,8 @@ create table if not exists mes.mes_box
     created_time        datetime default CURRENT_TIMESTAMP null comment '创建时间',
     updated_by          varchar(100)                       null comment '更新人',
     updated_time        datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
-    constraint uk_box_code
-        unique (box_code)
+    constraint uk_batch_work_box
+        unique (batch_num, work_id, box_code)
 )
     comment '箱码表';
 
@@ -135,8 +135,8 @@ create table if not exists mes.mes_package
     created_time datetime default CURRENT_TIMESTAMP null comment '创建时间',
     updated_by   varchar(100)                       null comment '更新人',
     updated_time datetime default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
-    constraint uk_box_package
-        unique (box_code, package_no)
+    constraint uk_batch_work_box_package
+        unique (batch_num, work_id, box_code, package_no)
 )
     comment '包件表';
 

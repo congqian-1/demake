@@ -768,6 +768,56 @@ class MesIntegrationSpecTest {
     }
 
     @Test
+    void story7_pullShouldAllowSameBoxCodeAcrossDifferentBatchWork() throws Exception {
+        String sharedWorkId = unique("WO");
+        String batchNum1 = unique("BATCH");
+        String batchNum2 = unique("BATCH");
+
+        pushBatch(batchNum1, sharedWorkId);
+        pushBatch(batchNum2, sharedWorkId);
+
+        PrepackageDataDTO dto1 = buildDtoWithPartCodes(batchNum1, sharedWorkId, Arrays.asList(
+            batchNum1 + "-" + sharedWorkId + "-PART-1",
+            batchNum1 + "-" + sharedWorkId + "-PART-2",
+            batchNum1 + "-" + sharedWorkId + "-PART-3"
+        ));
+        PrepackageDataDTO dto2 = buildDtoWithPartCodes(batchNum2, sharedWorkId, Arrays.asList(
+            batchNum2 + "-" + sharedWorkId + "-PART-1",
+            batchNum2 + "-" + sharedWorkId + "-PART-2",
+            batchNum2 + "-" + sharedWorkId + "-PART-3"
+        ));
+
+        applySharedBoxCodePrefix(dto1, "SHARED-BOX");
+        applySharedBoxCodePrefix(dto2, "SHARED-BOX");
+
+        Mockito.doReturn(dto1)
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(batchNum1, sharedWorkId);
+        Mockito.doReturn(dto2)
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(batchNum2, sharedWorkId);
+
+        prePackagePullTask.pullPrePackageData();
+
+        assertEquals("PULLED", getWorkOrder(batchNum1, sharedWorkId).getPrepackageStatus());
+        assertEquals("PULLED", getWorkOrder(batchNum2, sharedWorkId).getPrepackageStatus());
+
+        long boxCountInBatch1 = boxCodeMapper.selectCount(
+            new LambdaQueryWrapper<MesBoxCode>()
+                .eq(MesBoxCode::getBatchNum, batchNum1)
+                .eq(MesBoxCode::getWorkId, sharedWorkId)
+                .eq(MesBoxCode::getIsDeleted, 0));
+        long boxCountInBatch2 = boxCodeMapper.selectCount(
+            new LambdaQueryWrapper<MesBoxCode>()
+                .eq(MesBoxCode::getBatchNum, batchNum2)
+                .eq(MesBoxCode::getWorkId, sharedWorkId)
+                .eq(MesBoxCode::getIsDeleted, 0));
+
+        assertTrue(boxCountInBatch1 > 0);
+        assertTrue(boxCountInBatch2 > 0);
+    }
+
+    @Test
     void story7_batchRepull_shouldResetAllWorkOrdersToNotPulled() throws Exception {
         String batchNum = unique("BATCH");
         String workId1 = unique("WO");
@@ -952,6 +1002,13 @@ class MesIntegrationSpecTest {
         }
 
         return objectMapper.convertValue(root, PrepackageDataDTO.class);
+    }
+
+    private void applySharedBoxCodePrefix(PrepackageDataDTO dto, String prefix) {
+        List<PrepackageDataDTO.BoxInfoDetail> boxInfos = dto.getPrePackageInfo().getBoxInfoDetails();
+        for (int i = 0; i < boxInfos.size(); i++) {
+            boxInfos.get(i).setBoxCode(prefix + "-" + (i + 1));
+        }
     }
 
     private JsonNode loadTemplate() throws Exception {

@@ -426,7 +426,7 @@ public class PrePackageServiceImpl implements PrePackageService {
 
     /**
      * 保存预包装数据（覆盖模式 - 用于数据修正）
-     * 软删除旧板件（保留报工记录），物理删除包件/箱码/订单，插入新数据
+     * 物理删除旧层级数据（板件/包件/箱码/订单），再插入新数据
      */
     @Transactional(rollbackFor = Exception.class)
     public void savePrePackageDataWithOverwrite(MesWorkOrder workOrder, PrepackageDataDTO data) {

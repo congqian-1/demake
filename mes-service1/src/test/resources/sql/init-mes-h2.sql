@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS mes_box (
     updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uk_box_code ON mes_box (box_code);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_batch_work_box ON mes_box (batch_num, work_id, box_code);
 CREATE INDEX IF NOT EXISTS idx_batch_work_id_box ON mes_box (batch_num, work_id);
 CREATE INDEX IF NOT EXISTS idx_batch_num_box ON mes_box (batch_num);
 CREATE INDEX IF NOT EXISTS idx_is_deleted_box ON mes_box (is_deleted);
@@ -168,7 +168,7 @@ CREATE TABLE IF NOT EXISTS mes_package (
     updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uk_box_package ON mes_package (box_code, package_no);
+CREATE UNIQUE INDEX IF NOT EXISTS uk_batch_work_box_package ON mes_package (batch_num, work_id, box_code, package_no);
 CREATE INDEX IF NOT EXISTS idx_batch_work_id_pkg ON mes_package (batch_num, work_id);
 CREATE INDEX IF NOT EXISTS idx_batch_num_pkg ON mes_package (batch_num);
 CREATE INDEX IF NOT EXISTS idx_box_id ON mes_package (box_id);
