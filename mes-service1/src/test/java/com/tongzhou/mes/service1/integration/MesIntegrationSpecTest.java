@@ -953,6 +953,32 @@ class MesIntegrationSpecTest {
     }
 
     @Test
+    void story8_pushSync_shouldMarkFailedWithoutResetWhenSyncSaveFails() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId = unique("WO");
+        PrepackageDataDTO malformed = buildDtoWithPartCodes(batchNum, workId, Arrays.asList(
+            batchNum + "-" + workId + "-PART-1",
+            batchNum + "-" + workId + "-PART-2",
+            batchNum + "-" + workId + "-PART-3"
+        ));
+        malformed.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().add(null);
+        Mockito.doReturn(malformed)
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(batchNum, workId);
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push-sync")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildSyncPayload(batchNum, Arrays.asList(workId)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.failedCount").value(1))
+            .andExpect(jsonPath("$.workOrders[0].status").value("FAILED"));
+
+        MesWorkOrder refreshed = getWorkOrder(batchNum, workId);
+        assertEquals("FAILED", refreshed.getPrepackageStatus());
+        assertTrue(refreshed.getErrorMessage() != null && refreshed.getErrorMessage().contains("EXCEPTION"));
+    }
+
+    @Test
     void story8_pushSync_shouldReportPartialFailureAndContinueOtherWorkOrders() throws Exception {
         String sourceBatch = unique("BATCH");
         String sourceWork = unique("WO");

@@ -114,7 +114,7 @@ public class PrePackageServiceImpl implements PrePackageService {
         }
 
         try {
-            executeOwnedPull(workOrder);
+            executeOwnedPull(workOrder, true);
         } catch (Exception e) {
             // 异常已在内部落库并记录，最终以数据库状态回传
             log.warn("同步拉取执行异常，工单号: {}, 错误: {}", workId, e.getMessage());
@@ -136,10 +136,10 @@ public class PrePackageServiceImpl implements PrePackageService {
             log.info("工单已被其他执行者占用，跳过，工单号: {}, 批次号: {}", workOrder.getWorkId(), workOrder.getBatchNum());
             return;
         }
-        executeOwnedPull(workOrder);
+        executeOwnedPull(workOrder, false);
     }
 
-    private void executeOwnedPull(MesWorkOrder workOrder) throws Exception {
+    private void executeOwnedPull(MesWorkOrder workOrder, boolean forceFailOnError) throws Exception {
         String workId = workOrder.getWorkId();
         String batchNum = workOrder.getBatchNum();
 
@@ -168,10 +168,15 @@ public class PrePackageServiceImpl implements PrePackageService {
             log.error("工单预包装数据拉取失败，工单号: {}, 错误: {}", workId, e.getMessage(), e);
             logThirdPartyCall(batchNum, workId, "EXCEPTION: " + e.getMessage());
             String diagnostic = buildDiagnosticMessage("EXCEPTION: " + e.getMessage(), batchNum, workId);
-            Integer retryCountOverride = e instanceof RetryExhaustedException
-                ? ((RetryExhaustedException) e).getRetryCount()
-                : (e instanceof DuplicateInsertException ? MAX_RETRY_COUNT : null);
-            handlePullFailure(workOrder, diagnostic, retryCountOverride);
+            Integer retryCountOverride;
+            if (forceFailOnError) {
+                retryCountOverride = MAX_RETRY_COUNT;
+            } else {
+                retryCountOverride = e instanceof RetryExhaustedException
+                    ? ((RetryExhaustedException) e).getRetryCount()
+                    : (e instanceof DuplicateInsertException ? MAX_RETRY_COUNT : null);
+            }
+            handlePullFailure(workOrder, diagnostic, retryCountOverride, forceFailOnError);
             throw e;
         }
     }
@@ -742,7 +747,7 @@ public class PrePackageServiceImpl implements PrePackageService {
     /**
      * 处理拉取失败
      */
-    private void handlePullFailure(MesWorkOrder workOrder, String errorMessage, Integer retryCountOverride) {
+    private void handlePullFailure(MesWorkOrder workOrder, String errorMessage, Integer retryCountOverride, boolean forceFailOnError) {
         MesWorkOrder latest = workOrderMapper.selectById(workOrder.getId());
         int newRetryCount = retryCountOverride != null
             ? retryCountOverride
@@ -751,6 +756,19 @@ public class PrePackageServiceImpl implements PrePackageService {
         String batchNum = workOrder.getBatchNum();
 
         log.warn("工单 {} 拉取失败，重试次数: {}/{}", workId, newRetryCount, MAX_RETRY_COUNT);
+
+        if (forceFailOnError) {
+            workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+                .set(MesWorkOrder::getPrepackageStatus, "FAILED")
+                .set(MesWorkOrder::getRetryCount, newRetryCount)
+                .set(MesWorkOrder::getErrorMessage, errorMessage)
+                .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
+                .set(MesWorkOrder::getReprocessPending, 0)
+                .eq(MesWorkOrder::getId, workOrder.getId())
+                .eq(MesWorkOrder::getPrepackageStatus, "UPDATING"));
+            log.error("同步拉取失败，工单 {} 直接标记为FAILED", workId);
+            return;
+        }
 
         if (latest != null && Integer.valueOf(1).equals(latest.getReprocessPending())) {
             workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
