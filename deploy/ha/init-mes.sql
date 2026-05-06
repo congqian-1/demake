@@ -287,6 +287,7 @@ create table if not exists mes.mes_work_order
     retry_count        int         default 0                 null comment '重试次数',
     last_pull_time     datetime                              null comment '最后拉取时间',
     error_message      text                                  null comment '错误信息（拉取失败时）',
+    reprocess_pending  tinyint     default 0                 null comment '挂起重拉标记（0=无，1=有）',
     is_deleted         tinyint     default 0                 null comment '删除标识（0=正常，1=已删除）',
     created_by         varchar(100)                          null comment '创建人',
     created_time       datetime    default CURRENT_TIMESTAMP null comment '创建时间',
@@ -313,6 +314,9 @@ create index idx_optimizing_file_id
 
 create index idx_prepackage_status
     on mes.mes_work_order (prepackage_status);
+
+create index idx_reprocess_pending
+    on mes.mes_work_order (reprocess_pending);
 
 create index idx_work_id
     on mes.mes_work_order (work_id);

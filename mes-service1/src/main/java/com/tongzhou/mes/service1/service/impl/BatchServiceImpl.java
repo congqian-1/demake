@@ -22,6 +22,7 @@ import com.tongzhou.mes.service1.converter.BatchConverter;
 import com.tongzhou.mes.service1.mapper.MesBatchMapper;
 import com.tongzhou.mes.service1.mapper.MesOptimizationFileMapper;
 import com.tongzhou.mes.service1.mapper.MesWorkOrderMapper;
+import com.tongzhou.mes.service1.pojo.bo.BatchSaveResult;
 import com.tongzhou.mes.service1.pojo.dto.BatchPushRequest;
 import com.tongzhou.mes.service1.pojo.entity.MesBatch;
 import com.tongzhou.mes.service1.pojo.entity.MesOptimizationFile;
@@ -53,6 +54,12 @@ public class BatchServiceImpl implements BatchService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String saveBatch(BatchPushRequest request) {
+        return saveBatchWithResult(request).getBatchNum();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public BatchSaveResult saveBatchWithResult(BatchPushRequest request) {
         String batchNum = request.getBatchNum();
         log.info("开始处理批次推送，批次号: {}", batchNum);
 
@@ -67,6 +74,8 @@ public class BatchServiceImpl implements BatchService {
             log.info("已复用批次并刷新信息: {}, ID: {}", batchNum, batch.getId());
         }
 
+        BatchSaveResult saveResult = new BatchSaveResult();
+        saveResult.setBatchNum(batchNum);
         Long batchId = batch.getId();
         int totalWorkOrders = 0;
         for (BatchPushRequest.OptimizingFileInfo fileInfo : request.getOptimizingFiles()) {
@@ -87,10 +96,12 @@ public class BatchServiceImpl implements BatchService {
                 MesWorkOrder existingWorkOrder = workOrderMapper.selectByBatchNumAndWorkId(batchNum, orderInfo.getWorkId());
                 if (existingWorkOrder == null) {
                     MesWorkOrder workOrder = batchConverter.toMesWorkOrder(orderInfo, batchNum, batchId, file.getId());
+                    workOrder.setReprocessPending(0);
                     workOrderMapper.insert(workOrder);
                     log.info("已新增工单: {}, 工单号: {}", workOrder.getId(), orderInfo.getWorkId());
                 } else {
                     mergeWorkOrder(existingWorkOrder, orderInfo, batchNum, batchId, file.getId());
+                    // 先写公共字段
                     workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
                         .set(MesWorkOrder::getBatchId, existingWorkOrder.getBatchId())
                         .set(MesWorkOrder::getOptimizingFileId, existingWorkOrder.getOptimizingFileId())
@@ -107,12 +118,26 @@ public class BatchServiceImpl implements BatchService {
                         .set(MesWorkOrder::getCondition0, existingWorkOrder.getCondition0())
                         .set(MesWorkOrder::getPartTime0, existingWorkOrder.getPartTime0())
                         .set(MesWorkOrder::getZuz, existingWorkOrder.getZuz())
+                        .eq(MesWorkOrder::getId, existingWorkOrder.getId()));
+
+                    // 共存语义：UPDATING期间不打断当前执行，仅记录挂起重拉
+                    int updatedToNotPulled = workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
                         .set(MesWorkOrder::getPrepackageStatus, "NOT_PULLED")
                         .set(MesWorkOrder::getRetryCount, 0)
                         .set(MesWorkOrder::getErrorMessage, null)
-                        .eq(MesWorkOrder::getId, existingWorkOrder.getId()));
+                        .set(MesWorkOrder::getReprocessPending, 0)
+                        .eq(MesWorkOrder::getId, existingWorkOrder.getId())
+                        .ne(MesWorkOrder::getPrepackageStatus, "UPDATING"));
+                    if (updatedToNotPulled == 0) {
+                        workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+                            .set(MesWorkOrder::getRetryCount, 0)
+                            .set(MesWorkOrder::getErrorMessage, null)
+                            .set(MesWorkOrder::getReprocessPending, 1)
+                            .eq(MesWorkOrder::getId, existingWorkOrder.getId()));
+                    }
                     log.info("已复用工单并重置状态: {}, 工单号: {}", existingWorkOrder.getId(), orderInfo.getWorkId());
                 }
+                saveResult.getTargetedWorkIds().add(orderInfo.getWorkId());
                 totalWorkOrders++;
             }
         }
@@ -120,7 +145,7 @@ public class BatchServiceImpl implements BatchService {
         log.info("批次推送处理完成，批次号: {}, 优化文件数: {}, 工单数: {}", 
                 batchNum, request.getOptimizingFiles().size(), totalWorkOrders);
         
-        return batchNum;
+        return saveResult;
     }
 
     private void mergeBatch(MesBatch batch, BatchPushRequest request) {
@@ -157,5 +182,6 @@ public class BatchServiceImpl implements BatchService {
         workOrder.setPrepackageStatus("NOT_PULLED");
         workOrder.setRetryCount(0);
         workOrder.setErrorMessage(null);
+        workOrder.setReprocessPending(0);
     }
 }

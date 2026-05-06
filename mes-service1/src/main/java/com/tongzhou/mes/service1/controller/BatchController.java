@@ -18,7 +18,10 @@
 package com.tongzhou.mes.service1.controller;
 
 import com.tongzhou.mes.service1.pojo.dto.BatchPushRequest;
+import com.tongzhou.mes.service1.pojo.dto.BatchPushSyncRequest;
+import com.tongzhou.mes.service1.pojo.dto.BatchPushSyncResponse;
 import com.tongzhou.mes.service1.service.BatchService;
+import com.tongzhou.mes.service1.service.BatchSyncService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +46,7 @@ import java.util.Map;
 public class BatchController {
 
     private final BatchService batchService;
+    private final BatchSyncService batchSyncService;
 
     /**
      * 批次推送接口（供第三方MES系统调用）
@@ -91,6 +95,26 @@ public class BatchController {
             errorResponse.put("batchNo", request.getBatchNum());
             
             return ResponseEntity.status(500).body(errorResponse);
+        }
+    }
+
+    /**
+     * 批次推送并同步拉取接口
+     */
+    @PostMapping("/push-sync")
+    @Operation(summary = "批次推送并同步拉取", description = "第三方MES系统推送批次及工单数据后，同步拉取预包装并直接返回结果")
+    public ResponseEntity<BatchPushSyncResponse> pushBatchSync(@Validated @RequestBody BatchPushSyncRequest request) {
+        try {
+            log.info("收到同步批次推送请求，批次号: {}", request.getBatchNum());
+            BatchPushSyncResponse response = batchSyncService.pushAndSync(request);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("同步批次推送失败，批次号: {}, 错误信息: {}", request.getBatchNum(), e.getMessage(), e);
+            BatchPushSyncResponse response = new BatchPushSyncResponse();
+            response.setSuccess(false);
+            response.setMessage("同步批次推送失败: " + e.getMessage());
+            response.setBatchNum(request.getBatchNum());
+            return ResponseEntity.status(500).body(response);
         }
     }
 }

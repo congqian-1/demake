@@ -17,6 +17,8 @@
 
 package com.tongzhou.mes.service1.service;
 
+import com.tongzhou.mes.service1.pojo.bo.SyncPullResult;
+
 /**
  * 预包装服务接口
  * 
@@ -48,4 +50,9 @@ public interface PrePackageService {
      * @return 重置数量
      */
     int repullBatchWorkOrders(String batchNum, String operator, String reason);
+
+    /**
+     * 同步拉取指定批次工单，若工单正在处理中则立即返回PROCESSING。
+     */
+    SyncPullResult pullSingleWorkOrderForSync(String batchNum, String workId);
 }

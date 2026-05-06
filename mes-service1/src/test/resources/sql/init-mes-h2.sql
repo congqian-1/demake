@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS mes_work_order (
     retry_count INT DEFAULT 0,
     last_pull_time TIMESTAMP,
     error_message CLOB,
+    reprocess_pending TINYINT DEFAULT 0,
     is_deleted TINYINT DEFAULT 0,
     created_by VARCHAR(100),
     created_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -74,6 +75,7 @@ CREATE INDEX IF NOT EXISTS idx_is_deleted_wo ON mes_work_order (is_deleted);
 CREATE INDEX IF NOT EXISTS idx_last_pull_time ON mes_work_order (last_pull_time);
 CREATE INDEX IF NOT EXISTS idx_optimizing_file_id ON mes_work_order (optimizing_file_id);
 CREATE INDEX IF NOT EXISTS idx_prepackage_status ON mes_work_order (prepackage_status);
+CREATE INDEX IF NOT EXISTS idx_reprocess_pending ON mes_work_order (reprocess_pending);
 
 CREATE TABLE IF NOT EXISTS mes_prepackage_order (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,

@@ -39,6 +39,7 @@ import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.Trigger;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -843,6 +844,200 @@ class MesIntegrationSpecTest {
         assertEquals("NOT_PULLED", getWorkOrder(workId2).getPrepackageStatus());
     }
 
+    @Test
+    void story8_pushSync_shouldPullImmediatelyAndReturnSummary() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId = unique("WO");
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push-sync")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildSyncPayload(batchNum, Arrays.asList(workId)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.batchNum").value(batchNum))
+            .andExpect(jsonPath("$.totalWorkOrders").value(1))
+            .andExpect(jsonPath("$.successCount").value(1))
+            .andExpect(jsonPath("$.failedCount").value(0))
+            .andExpect(jsonPath("$.processingCount").value(0))
+            .andExpect(jsonPath("$.workOrders[0].workId").value(workId))
+            .andExpect(jsonPath("$.workOrders[0].status").value("PULLED"));
+
+        MesWorkOrder workOrder = getWorkOrder(batchNum, workId);
+        assertEquals("PULLED", workOrder.getPrepackageStatus());
+    }
+
+    @Test
+    void story8_pushSync_shouldAllowRepeatSubmissionWithoutDuplicateWorkOrderRecords() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId = unique("WO");
+        String payload = objectMapper.writeValueAsString(buildSyncPayload(batchNum, Arrays.asList(workId)));
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push-sync")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.successCount").value(1));
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push-sync")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.successCount").value(1))
+            .andExpect(jsonPath("$.totalWorkOrders").value(1));
+
+        long duplicated = workOrderMapper.selectCount(
+            new LambdaQueryWrapper<MesWorkOrder>()
+                .eq(MesWorkOrder::getBatchNum, batchNum)
+                .eq(MesWorkOrder::getWorkId, workId)
+                .eq(MesWorkOrder::getIsDeleted, 0));
+        assertEquals(1L, duplicated);
+    }
+
+    @Test
+    void story8_pushSync_shouldReturnProcessingWhenWorkOrderIsUpdating() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId = unique("WO");
+        pushBatch(batchNum, workId);
+        MesWorkOrder workOrder = getWorkOrder(batchNum, workId);
+        workOrder.setPrepackageStatus("UPDATING");
+        workOrder.setReprocessPending(0);
+        workOrderMapper.updateById(workOrder);
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push-sync")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildSyncPayload(batchNum, Arrays.asList(workId)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.processingCount").value(1))
+            .andExpect(jsonPath("$.workOrders[0].status").value("PROCESSING"));
+
+        MesWorkOrder refreshed = getWorkOrder(batchNum, workId);
+        assertEquals("UPDATING", refreshed.getPrepackageStatus());
+        assertEquals(1, refreshed.getReprocessPending());
+    }
+
+    @Test
+    void story8_pushSync_shouldReturnChineseDuplicateReasonForInsertConflict() throws Exception {
+        String batchNum1 = unique("BATCH");
+        String batchNum2 = unique("BATCH");
+        String workId1 = unique("WO");
+        String workId2 = unique("WO");
+
+        pushBatch(batchNum1, workId1);
+        prePackagePullTask.pullPrePackageData();
+        assertEquals("PULLED", waitForWorkOrderStatus(workId1, "PULLED", 5000).getPrepackageStatus());
+
+        List<MesBoard> boards = boardMapper.selectList(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getBatchNum, batchNum1)
+                .eq(MesBoard::getWorkId, workId1)
+                .eq(MesBoard::getIsDeleted, 0)
+                .orderByAsc(MesBoard::getPartCode));
+        assertTrue(!boards.isEmpty());
+
+        List<String> duplicatedPartCodes = new ArrayList<>();
+        for (MesBoard board : boards) {
+            duplicatedPartCodes.add(board.getPartCode());
+        }
+
+        PrepackageDataDTO duplicatedDto = buildDtoWithPartCodes(batchNum2, workId2, duplicatedPartCodes);
+        Mockito.doReturn(duplicatedDto)
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(batchNum2, workId2);
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push-sync")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildSyncPayload(batchNum2, Arrays.asList(workId2)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.failedCount").value(1))
+            .andExpect(jsonPath("$.workOrders[0].status").value("FAILED"))
+            .andExpect(jsonPath("$.workOrders[0].errorMessage").value("板件重复：板件编码已存在，无法重复新增"));
+    }
+
+    @Test
+    void story8_pushSync_shouldReportPartialFailureAndContinueOtherWorkOrders() throws Exception {
+        String sourceBatch = unique("BATCH");
+        String sourceWork = unique("WO");
+        pushBatch(sourceBatch, sourceWork);
+        prePackagePullTask.pullPrePackageData();
+        assertEquals("PULLED", waitForWorkOrderStatus(sourceWork, "PULLED", 5000).getPrepackageStatus());
+
+        List<MesBoard> sourceBoards = boardMapper.selectList(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getBatchNum, sourceBatch)
+                .eq(MesBoard::getWorkId, sourceWork)
+                .eq(MesBoard::getIsDeleted, 0)
+                .orderByAsc(MesBoard::getPartCode));
+        assertTrue(!sourceBoards.isEmpty());
+
+        List<String> duplicatedPartCodes = new ArrayList<>();
+        for (MesBoard board : sourceBoards) {
+            duplicatedPartCodes.add(board.getPartCode());
+        }
+
+        String targetBatch = unique("BATCH");
+        String failedWork = unique("WO");
+        String successWork = unique("WO");
+        PrepackageDataDTO duplicatedDto = buildDtoWithPartCodes(targetBatch, failedWork, duplicatedPartCodes);
+        Mockito.doReturn(duplicatedDto)
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(targetBatch, failedWork);
+
+        MvcResult result = mockMvc.perform(post("/api/v1/third-party/batch/push-sync")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(
+                    buildSyncPayload(targetBatch, Arrays.asList(failedWork, successWork)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalWorkOrders").value(2))
+            .andExpect(jsonPath("$.failedCount").value(1))
+            .andExpect(jsonPath("$.successCount").value(1))
+            .andReturn();
+
+        JsonNode body = objectMapper.readTree(result.getResponse().getContentAsString());
+        JsonNode details = body.get("workOrders");
+        String failedStatus = null;
+        String failedError = null;
+        String successStatus = null;
+        for (JsonNode detail : details) {
+            String workId = detail.get("workId").asText();
+            if (failedWork.equals(workId)) {
+                failedStatus = detail.get("status").asText();
+                failedError = detail.path("errorMessage").asText();
+            }
+            if (successWork.equals(workId)) {
+                successStatus = detail.get("status").asText();
+            }
+        }
+
+        assertEquals("FAILED", failedStatus);
+        assertTrue(failedError.contains("重复"));
+        assertTrue("PULLED".equals(successStatus) || "NO_DATA".equals(successStatus));
+    }
+
+    @Test
+    void story8_pushSync_shouldCoexistWithAsyncPushAndSchedulerPull() throws Exception {
+        String batchNum = unique("BATCH");
+        String syncWork = unique("WO");
+        String asyncWork = unique("WO");
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push-sync")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildSyncPayload(batchNum, Arrays.asList(syncWork)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.successCount").value(1));
+        assertEquals("PULLED", getWorkOrder(batchNum, syncWork).getPrepackageStatus());
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildBatchRequest(batchNum, Arrays.asList(asyncWork)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true));
+
+        assertEquals("NOT_PULLED", getWorkOrder(batchNum, asyncWork).getPrepackageStatus());
+
+        prePackagePullTask.pullPrePackageData();
+        assertEquals("PULLED", waitForWorkOrderStatus(asyncWork, "PULLED", 5000).getPrepackageStatus());
+        assertEquals("PULLED", getWorkOrder(batchNum, syncWork).getPrepackageStatus());
+    }
+
     private void pushBatch(String batchNum, String workId) throws Exception {
         BatchPushRequest request = buildBatchRequest(batchNum, Arrays.asList(workId));
         mockMvc.perform(post("/api/v1/third-party/batch/push")
@@ -850,6 +1045,10 @@ class MesIntegrationSpecTest {
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true));
+    }
+
+    private ObjectNode buildSyncPayload(String batchNum, List<String> workIds) {
+        return objectMapper.valueToTree(buildBatchRequest(batchNum, workIds));
     }
 
     private MesWorkOrder getWorkOrder(String workId) {

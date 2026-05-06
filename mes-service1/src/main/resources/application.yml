@@ -104,3 +104,8 @@ logging:
     dev.macula.samples: debug
   file:
     name: /logs/mes-service1/mes-service1.log
+
+management:
+  health:
+    mail:
+      enabled: false

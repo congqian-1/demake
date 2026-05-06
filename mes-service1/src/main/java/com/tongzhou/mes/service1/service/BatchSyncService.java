@@ -17,27 +17,16 @@
 
 package com.tongzhou.mes.service1.service;
 
-import com.tongzhou.mes.service1.pojo.bo.BatchSaveResult;
-import com.tongzhou.mes.service1.pojo.dto.BatchPushRequest;
+import com.tongzhou.mes.service1.pojo.dto.BatchPushSyncRequest;
+import com.tongzhou.mes.service1.pojo.dto.BatchPushSyncResponse;
 
 /**
- * 批次服务接口
- * 
- * @author MES Team
+ * 同步批次推送服务
  */
-public interface BatchService {
+public interface BatchSyncService {
 
     /**
-     * 保存批次数据（含工单和优化文件）
-     * 实现幂等性：如果批次号已存在，则删除旧数据后重新插入
-     * 
-     * @param request 批次推送请求
-     * @return 批次号
+     * 推送批次并同步拉取本次请求工单数据，直接返回处理结果。
      */
-    String saveBatch(BatchPushRequest request);
-
-    /**
-     * 保存批次数据并返回本次请求涉及的工单集合。
-     */
-    BatchSaveResult saveBatchWithResult(BatchPushRequest request);
+    BatchPushSyncResponse pushAndSync(BatchPushSyncRequest request);
 }

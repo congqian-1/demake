@@ -79,6 +79,18 @@ public interface MesBoardMapper extends BaseMapper<MesBoard> {
                                                             @Param("workId") String workId);
 
     /**
+     * Select boards by part codes and include logically deleted rows.
+     */
+    @Select({"<script>",
+        "SELECT * FROM mes_part",
+        "WHERE part_code IN",
+        "<foreach collection='partCodes' item='code' open='(' separator=',' close=')'>",
+        "#{code}",
+        "</foreach>",
+        "</script>"})
+    List<MesBoard> selectByPartCodesIncludeDeleted(@Param("partCodes") List<String> partCodes);
+
+    /**
      * Revive a logically deleted board so that subsequent updateById can succeed.
      */
     @Update("UPDATE mes_part SET is_deleted = 0 WHERE id = #{id}")

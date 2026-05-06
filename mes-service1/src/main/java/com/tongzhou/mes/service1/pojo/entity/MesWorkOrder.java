@@ -138,6 +138,11 @@ public class MesWorkOrder {
     private String errorMessage;
 
     /**
+     * 挂起重拉标记（0-无，1-有）
+     */
+    private Integer reprocessPending;
+
+    /**
      * 逻辑删除标识（0-未删除、1-已删除）
      */
     @TableLogic

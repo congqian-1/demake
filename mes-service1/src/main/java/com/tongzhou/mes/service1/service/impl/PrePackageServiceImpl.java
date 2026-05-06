@@ -20,7 +20,9 @@ package com.tongzhou.mes.service1.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.tongzhou.mes.service1.client.ThirdPartyMesClient;
+import com.tongzhou.mes.service1.exception.DuplicateInsertException;
 import com.tongzhou.mes.service1.mapper.*;
+import com.tongzhou.mes.service1.pojo.bo.SyncPullResult;
 import com.tongzhou.mes.service1.pojo.dto.PrepackageDataDTO;
 import com.tongzhou.mes.service1.pojo.entity.*;
 import com.tongzhou.mes.service1.service.EmailNotificationService;
@@ -32,9 +34,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 预包装服务实现类
@@ -75,28 +79,71 @@ public class PrePackageServiceImpl implements PrePackageService {
 
         for (MesWorkOrder workOrder : pendingOrders) {
             try {
-                pullSingleWorkOrder(workOrder);
+                pullSingleWorkOrderOwned(workOrder);
             } catch (Exception e) {
                 log.error("拉取工单 {} 的预包装数据失败: {}", workOrder.getWorkId(), e.getMessage(), e);
             }
         }
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public SyncPullResult pullSingleWorkOrderForSync(String batchNum, String workId) {
+        SyncPullResult result = new SyncPullResult();
+        result.setWorkId(workId);
+
+        MesWorkOrder workOrder = workOrderMapper.selectByBatchNumAndWorkId(batchNum, workId);
+        if (workOrder == null) {
+            result.setStatus("FAILED");
+            result.setErrorCode("WORK_ORDER_NOT_FOUND");
+            result.setErrorMessage("工单不存在：该批次下未找到工单");
+            result.setBoardCount(0);
+            return result;
+        }
+
+        if (!tryAcquireWorkOrder(workOrder.getId())) {
+            MesWorkOrder latest = workOrderMapper.selectById(workOrder.getId());
+            String status = latest != null ? latest.getPrepackageStatus() : "PROCESSING";
+            if ("UPDATING".equals(status)) {
+                result.setStatus("PROCESSING");
+            } else {
+                result.setStatus(status);
+            }
+            result.setBoardCount(countActiveBoards(batchNum, workId));
+            return result;
+        }
+
+        try {
+            executeOwnedPull(workOrder);
+        } catch (Exception e) {
+            // 异常已在内部落库并记录，最终以数据库状态回传
+            log.warn("同步拉取执行异常，工单号: {}, 错误: {}", workId, e.getMessage());
+        }
+
+        MesWorkOrder latest = workOrderMapper.selectById(workOrder.getId());
+        result.setStatus(latest != null ? latest.getPrepackageStatus() : "FAILED");
+        result.setErrorMessage(latest != null ? latest.getErrorMessage() : "未知错误");
+        result.setBoardCount(countActiveBoards(batchNum, workId));
+        return result;
+    }
+
     /**
      * 拉取单个工单的预包装数据
      */
     @Transactional(rollbackFor = Exception.class)
-    public void pullSingleWorkOrder(MesWorkOrder workOrder) throws Exception {
+    public void pullSingleWorkOrderOwned(MesWorkOrder workOrder) throws Exception {
+        if (!tryAcquireWorkOrder(workOrder.getId())) {
+            log.info("工单已被其他执行者占用，跳过，工单号: {}, 批次号: {}", workOrder.getWorkId(), workOrder.getBatchNum());
+            return;
+        }
+        executeOwnedPull(workOrder);
+    }
+
+    private void executeOwnedPull(MesWorkOrder workOrder) throws Exception {
         String workId = workOrder.getWorkId();
         String batchNum = workOrder.getBatchNum();
 
         log.info("开始拉取工单预包装数据，工单号: {}, 批次号: {}", workId, batchNum);
-
-        // 更新工单状态为"更新中"
-        workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
-                .set(MesWorkOrder::getPrepackageStatus, "UPDATING")
-                .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
-                .eq(MesWorkOrder::getId, workOrder.getId()));
 
         try {
             // 带重试的拉取
@@ -105,11 +152,7 @@ public class PrePackageServiceImpl implements PrePackageService {
 
             if (data == null || data.getPrePackageInfo() == null || isEmptyPrepackage(data)) {
                 String diagnostic = buildDiagnosticMessage("NO_DATA", batchNum, workId);
-                workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
-                        .set(MesWorkOrder::getPrepackageStatus, "NO_DATA")
-                        .set(MesWorkOrder::getErrorMessage, diagnostic)
-                        .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
-                        .eq(MesWorkOrder::getId, workOrder.getId()));
+                finishWithTerminalStatus(workOrder.getId(), "NO_DATA", diagnostic, null);
                 log.error("工单 {} 无预包装数据", workId);
                 logThirdPartyCall(batchNum, workId, "NO_DATA");
                 return;
@@ -117,13 +160,7 @@ public class PrePackageServiceImpl implements PrePackageService {
 
             savePrePackageDataWithOverwrite(workOrder, data);
 
-            // 更新工单状态为"已拉取"
-            workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
-                    .set(MesWorkOrder::getPrepackageStatus, "PULLED")
-                    .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
-                    .set(MesWorkOrder::getRetryCount, 0)
-                    .set(MesWorkOrder::getErrorMessage, null)
-                    .eq(MesWorkOrder::getId, workOrder.getId()));
+            finishWithTerminalStatus(workOrder.getId(), "PULLED", null, 0);
 
             log.info("工单预包装数据拉取成功，工单号: {}", workId);
 
@@ -133,7 +170,7 @@ public class PrePackageServiceImpl implements PrePackageService {
             String diagnostic = buildDiagnosticMessage("EXCEPTION: " + e.getMessage(), batchNum, workId);
             Integer retryCountOverride = e instanceof RetryExhaustedException
                 ? ((RetryExhaustedException) e).getRetryCount()
-                : null;
+                : (e instanceof DuplicateInsertException ? MAX_RETRY_COUNT : null);
             handlePullFailure(workOrder, diagnostic, retryCountOverride);
             throw e;
         }
@@ -155,6 +192,108 @@ public class PrePackageServiceImpl implements PrePackageService {
             }
         }
         return true;
+    }
+
+    private void validateInsertCandidates(MesWorkOrder workOrder, PrepackageDataDTO.PrePackageInfo info) {
+        if (info == null || info.getBoxInfoDetails() == null) {
+            return;
+        }
+        Set<String> incomingBoxCodes = new HashSet<>();
+        Set<String> incomingPackageKeys = new HashSet<>();
+        Set<String> incomingPartCodes = new HashSet<>();
+
+        for (PrepackageDataDTO.BoxInfoDetail boxInfo : info.getBoxInfoDetails()) {
+            String boxCode = boxInfo.getBoxCode();
+            if (boxCode != null && !incomingBoxCodes.add(boxCode)) {
+                throw new DuplicateInsertException(
+                    "DUP_BOX_CODE",
+                    "箱码重复：同一批次同一工单下箱码已存在，无法重复新增"
+                );
+            }
+
+            if (boxInfo.getPackageInfos() == null) {
+                continue;
+            }
+            for (PrepackageDataDTO.PackageInfo packageInfo : boxInfo.getPackageInfos()) {
+                String packageKey = boxCode + "#" + packageInfo.getPackageNo();
+                if (!incomingPackageKeys.add(packageKey)) {
+                    throw new DuplicateInsertException(
+                        "DUP_PACKAGE_NO",
+                        "包件重复：同一批次同一工单同一箱码下包号已存在，无法重复新增"
+                    );
+                }
+                if (packageInfo.getPartInfos() == null) {
+                    continue;
+                }
+                for (PrepackageDataDTO.PartInfo partInfo : packageInfo.getPartInfos()) {
+                    if (partInfo.getPartCode() != null && !incomingPartCodes.add(partInfo.getPartCode())) {
+                        throw new DuplicateInsertException(
+                            "DUP_PART_CODE",
+                            "板件重复：板件编码已存在，无法重复新增"
+                        );
+                    }
+                }
+            }
+        }
+
+        if (!incomingPartCodes.isEmpty()) {
+            List<MesBoard> existingBoards = boardMapper.selectByPartCodesIncludeDeleted(new ArrayList<>(incomingPartCodes));
+            for (MesBoard existingBoard : existingBoards) {
+                if (!workOrder.getWorkId().equals(existingBoard.getWorkId())
+                    || !workOrder.getBatchNum().equals(existingBoard.getBatchNum())) {
+                    throw new DuplicateInsertException(
+                        "DUP_PART_CODE",
+                        "板件重复：板件编码已存在，无法重复新增"
+                    );
+                }
+            }
+        }
+    }
+
+    private boolean tryAcquireWorkOrder(Long workOrderId) {
+        int updated = workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+            .set(MesWorkOrder::getPrepackageStatus, "UPDATING")
+            .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
+            .set(MesWorkOrder::getReprocessPending, 0)
+            .eq(MesWorkOrder::getId, workOrderId)
+            .eq(MesWorkOrder::getPrepackageStatus, "NOT_PULLED")
+            .eq(MesWorkOrder::getIsDeleted, 0));
+        return updated > 0;
+    }
+
+    private void finishWithTerminalStatus(Long workOrderId, String status, String errorMessage, Integer retryCount) {
+        int updated = workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+            .set(MesWorkOrder::getPrepackageStatus, status)
+            .set(MesWorkOrder::getErrorMessage, errorMessage)
+            .set(MesWorkOrder::getRetryCount, retryCount)
+            .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
+            .set(MesWorkOrder::getReprocessPending, 0)
+            .eq(MesWorkOrder::getId, workOrderId)
+            .eq(MesWorkOrder::getPrepackageStatus, "UPDATING")
+            .eq(MesWorkOrder::getReprocessPending, 0));
+        if (updated > 0) {
+            return;
+        }
+
+        int reset = workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+            .set(MesWorkOrder::getPrepackageStatus, "NOT_PULLED")
+            .set(MesWorkOrder::getRetryCount, 0)
+            .set(MesWorkOrder::getErrorMessage, null)
+            .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
+            .set(MesWorkOrder::getReprocessPending, 0)
+            .eq(MesWorkOrder::getId, workOrderId)
+            .eq(MesWorkOrder::getPrepackageStatus, "UPDATING")
+            .eq(MesWorkOrder::getReprocessPending, 1));
+        if (reset > 0) {
+            log.info("工单 {} 在执行中收到新重拉意图，已重置为NOT_PULLED", workOrderId);
+        }
+    }
+
+    private long countActiveBoards(String batchNum, String workId) {
+        return boardMapper.selectCount(new LambdaQueryWrapper<MesBoard>()
+            .eq(MesBoard::getBatchNum, batchNum)
+            .eq(MesBoard::getWorkId, workId)
+            .eq(MesBoard::getIsDeleted, 0));
     }
 
     private void logThirdPartyCall(String batchNum, String workId, String reason) {
@@ -299,6 +438,9 @@ public class PrePackageServiceImpl implements PrePackageService {
         order.setWorkId(workId);
 
         PrepackageDataDTO.PrePackageInfo info = data.getPrePackageInfo();
+        if (existingBoardsByPartCode == null) {
+            validateInsertCandidates(workOrder, info);
+        }
         order.setOrderNum(info.getOrderNum());
         order.setConsignor(info.getConsignor());
         order.setContractNo(info.getContractNo());
@@ -493,11 +635,20 @@ public class PrePackageServiceImpl implements PrePackageService {
         for (MesWorkOrder workOrder : workOrders) {
             MesCorrectionLog correctionLog = buildCorrectionLog(workOrder, operator, reason, "NOT_PULLED");
             correctionLogMapper.insert(correctionLog);
-            workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
-                    .set(MesWorkOrder::getPrepackageStatus, "NOT_PULLED")
+            int updated = workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+                .set(MesWorkOrder::getPrepackageStatus, "NOT_PULLED")
+                .set(MesWorkOrder::getRetryCount, 0)
+                .set(MesWorkOrder::getErrorMessage, null)
+                .set(MesWorkOrder::getReprocessPending, 0)
+                .eq(MesWorkOrder::getId, workOrder.getId())
+                .ne(MesWorkOrder::getPrepackageStatus, "UPDATING"));
+            if (updated == 0) {
+                workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
                     .set(MesWorkOrder::getRetryCount, 0)
                     .set(MesWorkOrder::getErrorMessage, null)
+                    .set(MesWorkOrder::getReprocessPending, 1)
                     .eq(MesWorkOrder::getId, workOrder.getId()));
+            }
             correctionLog.setResult("SUCCESS");
             correctionLog.setUpdatedBy(operator);
             correctionLog.setUpdatedTime(LocalDateTime.now());
@@ -518,11 +669,20 @@ public class PrePackageServiceImpl implements PrePackageService {
         for (MesWorkOrder workOrder : workOrders) {
             MesCorrectionLog correctionLog = buildCorrectionLog(workOrder, operator, reason, "NOT_PULLED");
             correctionLogMapper.insert(correctionLog);
-            workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+            int updated = workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
                 .set(MesWorkOrder::getPrepackageStatus, "NOT_PULLED")
                 .set(MesWorkOrder::getRetryCount, 0)
                 .set(MesWorkOrder::getErrorMessage, null)
-                .eq(MesWorkOrder::getId, workOrder.getId()));
+                .set(MesWorkOrder::getReprocessPending, 0)
+                .eq(MesWorkOrder::getId, workOrder.getId())
+                .ne(MesWorkOrder::getPrepackageStatus, "UPDATING"));
+            if (updated == 0) {
+                workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+                    .set(MesWorkOrder::getRetryCount, 0)
+                    .set(MesWorkOrder::getErrorMessage, null)
+                    .set(MesWorkOrder::getReprocessPending, 1)
+                    .eq(MesWorkOrder::getId, workOrder.getId()));
+            }
             correctionLog.setResult("SUCCESS");
             correctionLog.setUpdatedBy(operator);
             correctionLog.setUpdatedTime(LocalDateTime.now());
@@ -583,22 +743,32 @@ public class PrePackageServiceImpl implements PrePackageService {
      * 处理拉取失败
      */
     private void handlePullFailure(MesWorkOrder workOrder, String errorMessage, Integer retryCountOverride) {
+        MesWorkOrder latest = workOrderMapper.selectById(workOrder.getId());
         int newRetryCount = retryCountOverride != null
             ? retryCountOverride
-            : (workOrder.getRetryCount() != null ? workOrder.getRetryCount() : 0) + 1;
+            : (latest != null && latest.getRetryCount() != null ? latest.getRetryCount() : 0) + 1;
         String workId = workOrder.getWorkId();
         String batchNum = workOrder.getBatchNum();
 
         log.warn("工单 {} 拉取失败，重试次数: {}/{}", workId, newRetryCount, MAX_RETRY_COUNT);
 
+        if (latest != null && Integer.valueOf(1).equals(latest.getReprocessPending())) {
+            workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+                .set(MesWorkOrder::getPrepackageStatus, "NOT_PULLED")
+                .set(MesWorkOrder::getRetryCount, 0)
+                .set(MesWorkOrder::getErrorMessage, null)
+                .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
+                .set(MesWorkOrder::getReprocessPending, 0)
+                .eq(MesWorkOrder::getId, workOrder.getId())
+                .eq(MesWorkOrder::getPrepackageStatus, "UPDATING")
+                .eq(MesWorkOrder::getReprocessPending, 1));
+            log.info("工单 {} 失败时检测到挂起重拉，保留为NOT_PULLED待后续执行", workId);
+            return;
+        }
+
         if (newRetryCount >= MAX_RETRY_COUNT) {
             // 达到最大重试次数，标记为失败
-            workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
-                    .set(MesWorkOrder::getPrepackageStatus, "FAILED")
-                    .set(MesWorkOrder::getRetryCount, newRetryCount)
-                    .set(MesWorkOrder::getErrorMessage, errorMessage)
-                    .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
-                    .eq(MesWorkOrder::getId, workOrder.getId()));
+            finishWithTerminalStatus(workOrder.getId(), "FAILED", errorMessage, newRetryCount);
 
             // 发送邮件通知
             try {
@@ -617,7 +787,9 @@ public class PrePackageServiceImpl implements PrePackageService {
                     .set(MesWorkOrder::getRetryCount, newRetryCount)
                     .set(MesWorkOrder::getErrorMessage, errorMessage)
                     .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
-                    .eq(MesWorkOrder::getId, workOrder.getId()));
+                    .set(MesWorkOrder::getReprocessPending, 0)
+                    .eq(MesWorkOrder::getId, workOrder.getId())
+                    .eq(MesWorkOrder::getPrepackageStatus, "UPDATING"));
         }
     }
 }
