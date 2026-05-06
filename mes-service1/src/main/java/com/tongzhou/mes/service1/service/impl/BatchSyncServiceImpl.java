@@ -64,7 +64,7 @@ public class BatchSyncServiceImpl implements BatchSyncService {
             response.getWorkOrders().add(workOrderResult);
             response.setTotalBoardCount(response.getTotalBoardCount() + Math.max(0, workOrderResult.getBoardCount()));
 
-            if ("PULLED".equals(workOrderResult.getStatus()) || "NO_DATA".equals(workOrderResult.getStatus())) {
+            if ("PULLED".equals(workOrderResult.getStatus())) {
                 response.setSuccessCount(response.getSuccessCount() + 1);
             } else if ("PROCESSING".equals(workOrderResult.getStatus())) {
                 response.setProcessingCount(response.getProcessingCount() + 1);
@@ -88,6 +88,14 @@ public class BatchSyncServiceImpl implements BatchSyncService {
             result.setBoardCount(pullResult.getBoardCount());
             result.setErrorCode(pullResult.getErrorCode());
             result.setErrorMessage(pullResult.getErrorMessage());
+            if ("NO_DATA".equals(result.getStatus())) {
+                if (result.getErrorCode() == null || result.getErrorCode().trim().isEmpty()) {
+                    result.setErrorCode("NO_DATA");
+                }
+                if (result.getErrorMessage() == null || result.getErrorMessage().trim().isEmpty()) {
+                    result.setErrorMessage("工单无预包装数据");
+                }
+            }
             if ("FAILED".equals(result.getStatus()) && result.getErrorMessage() != null) {
                 normalizeDuplicateError(result);
             }

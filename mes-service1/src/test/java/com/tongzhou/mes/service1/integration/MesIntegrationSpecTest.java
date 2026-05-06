@@ -866,6 +866,31 @@ class MesIntegrationSpecTest {
     }
 
     @Test
+    void story8_pushSync_shouldCountNoDataAsFailure() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId = unique("WO");
+        PrepackageDataDTO emptyDto = new PrepackageDataDTO();
+        Mockito.doReturn(emptyDto)
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(batchNum, workId);
+
+        mockMvc.perform(post("/api/v1/third-party/batch/push-sync")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(buildSyncPayload(batchNum, Arrays.asList(workId)))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.successCount").value(0))
+            .andExpect(jsonPath("$.failedCount").value(1))
+            .andExpect(jsonPath("$.processingCount").value(0))
+            .andExpect(jsonPath("$.workOrders[0].workId").value(workId))
+            .andExpect(jsonPath("$.workOrders[0].status").value("NO_DATA"))
+            .andExpect(jsonPath("$.workOrders[0].errorCode").value("NO_DATA"));
+
+        MesWorkOrder workOrder = getWorkOrder(batchNum, workId);
+        assertEquals("NO_DATA", workOrder.getPrepackageStatus());
+    }
+
+    @Test
     void story8_pushSync_shouldAllowRepeatSubmissionWithoutDuplicateWorkOrderRecords() throws Exception {
         String batchNum = unique("BATCH");
         String workId = unique("WO");
