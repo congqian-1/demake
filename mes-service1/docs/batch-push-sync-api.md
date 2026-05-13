@@ -11,42 +11,7 @@
 - 若工单处于 `UPDATING`，本次同步接口对该工单返回 `PROCESSING`，不等待另一个执行者结束。
 - 接口返回为批次级汇总 + 工单级明细，调用方需按 `workOrders[].status` 判断单工单成败。
 - 仅在新增插入路径做重复校验；更新路径按覆盖语义处理，不额外做重复前置校验。
-## 实现方式简介
-接口入口在 `BatchController.pushBatchSync`，核心流程是 `BatchSyncService.pushAndSync`：先复用 `saveBatchWithResult` 完成批次/优化文件/工单的新增或更新，再按请求涉及工单逐个执行 `PrePackageService.pullSingleWorkOrderForSync`；每个工单结果汇总到 `workOrders[]`，并累计 `successCount`、`failedCount`、`processingCount`、`totalBoardCount`；若有失败项则顶层 `success=false` 且 `message=同步批次推送处理完成（存在失败项）`。
-## 流程图
-```mermaid
-flowchart TD
-    A((开始)) -->|① 接收请求| B[校验请求体字段]
-    B -->|② 校验通过| C[(按batchNum查询或写入 mes_batch)]
-    C -->|③ 处理优化文件| D[(按batchId和fileName查询或写入 mes_optimizing_file)]
-    D -->|④ 处理工单| E[(按batchNum和workId查询或写入 mes_work_order)]
-    E -->|⑤ 收集待同步工单| F{是否还有工单}
-    F -->|⑥ 是| G[(CAS更新 mes_work_order 状态到 UPDATING)]
-    G -->|⑦ 更新成功| H[/调用第三方预包装接口 getPrepackageInfo/]
-    G -->|⑧ 更新失败| I[工单结果标记 PROCESSING]
-    H -->|⑨ 返回空数据| J[(更新 mes_work_order 状态 NO_DATA)]
-    H -->|⑩ 返回有效数据| K[(物理删除旧订单链路数据 mes_part mes_package mes_box mes_prepackage_order)]
-    K -->|⑪ 覆盖写入新数据| L[(写入 mes_prepackage_order mes_box mes_package mes_part)]
-    L -->|⑫ 成功| M[(更新 mes_work_order 状态 PULLED)]
-    H -->|⑬ 第三方异常或入库异常| N[(更新 mes_work_order 状态 FAILED 并写错误信息)]
-    I -->|⑭ 汇总工单结果| O[累计统计 success failed processing boardCount]
-    J -->|⑮ 汇总工单结果| O
-    M -->|⑯ 汇总工单结果| O
-    N -->|⑰ 汇总工单结果| O
-    O -->|⑱ 判断下一工单| F
-    F -->|⑲ 否| P[生成批次级响应]
-    P -->|⑳ 返回结果| Q((结束))
-    classDef startEnd fill:#2E8B57,color:#fff;
-    classDef process fill:#4682B4,color:#fff;
-    classDef decision fill:#FFA500,color:#000;
-    classDef db fill:#FFD700,color:#000;
-    classDef api fill:#FF6347,color:#000;
-    class A,Q startEnd;
-    class B,I,O,P process;
-    class F decision;
-    class C,D,E,G,J,K,L,M,N db;
-    class H api;
-```
+
 ## 接口说明
 | 步骤 | 说明 |
 | -- | -- |

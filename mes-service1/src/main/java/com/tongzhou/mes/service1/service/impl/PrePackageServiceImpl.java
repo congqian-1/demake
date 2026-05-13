@@ -58,6 +58,7 @@ public class PrePackageServiceImpl implements PrePackageService {
     private final MesCorrectionLogMapper correctionLogMapper;
     private final ThirdPartyMesClient thirdPartyMesClient;
     private final EmailNotificationService emailNotificationService;
+    private final PrePackageOverwriteTxService prePackageOverwriteTxService;
     private static final int MAX_BATCH_SIZE = 50;
     private static final int MAX_RETRY_COUNT = 3;
     private static final long[] RETRY_DELAYS = {1000, 2000, 4000}; // 1s, 2s, 4s
@@ -158,7 +159,7 @@ public class PrePackageServiceImpl implements PrePackageService {
                 return;
             }
 
-            savePrePackageDataWithOverwrite(workOrder, data);
+            savePrePackageDataWithOverwriteInNewTransaction(workOrder, data);
 
             finishWithTerminalStatus(workOrder.getId(), "PULLED", null, 0);
 
@@ -203,6 +204,8 @@ public class PrePackageServiceImpl implements PrePackageService {
         if (info == null || info.getBoxInfoDetails() == null) {
             return;
         }
+        String incomingBatchNum = workOrder.getBatchNum();
+        String incomingWorkId = workOrder.getWorkId();
         Set<String> incomingBoxCodes = new HashSet<>();
         Set<String> incomingPackageKeys = new HashSet<>();
         Set<String> incomingPartCodes = new HashSet<>();
@@ -212,7 +215,8 @@ public class PrePackageServiceImpl implements PrePackageService {
             if (boxCode != null && !incomingBoxCodes.add(boxCode)) {
                 throw new DuplicateInsertException(
                     "DUP_BOX_CODE",
-                    "箱码重复：同一批次同一工单下箱码已存在，无法重复新增"
+                    "箱码重复：同一批次同一工单下箱码已存在，无法重复新增，"
+                        + "boxCode=" + boxCode + ", batchNum=" + incomingBatchNum + ", workId=" + incomingWorkId
                 );
             }
 
@@ -224,7 +228,9 @@ public class PrePackageServiceImpl implements PrePackageService {
                 if (!incomingPackageKeys.add(packageKey)) {
                     throw new DuplicateInsertException(
                         "DUP_PACKAGE_NO",
-                        "包件重复：同一批次同一工单同一箱码下包号已存在，无法重复新增"
+                        "包件重复：同一批次同一工单同一箱码下包号已存在，无法重复新增，"
+                            + "boxCode=" + boxCode + ", packageNo=" + packageInfo.getPackageNo()
+                            + ", batchNum=" + incomingBatchNum + ", workId=" + incomingWorkId
                     );
                 }
                 if (packageInfo.getPartInfos() == null) {
@@ -234,7 +240,9 @@ public class PrePackageServiceImpl implements PrePackageService {
                     if (partInfo.getPartCode() != null && !incomingPartCodes.add(partInfo.getPartCode())) {
                         throw new DuplicateInsertException(
                             "DUP_PART_CODE",
-                            "板件重复：板件编码已存在，无法重复新增"
+                            "板件重复：板件编码已存在，无法重复新增，"
+                                + "partCode=" + partInfo.getPartCode()
+                                + ", batchNum=" + incomingBatchNum + ", workId=" + incomingWorkId
                         );
                     }
                 }
@@ -248,11 +256,20 @@ public class PrePackageServiceImpl implements PrePackageService {
                     || !workOrder.getBatchNum().equals(existingBoard.getBatchNum())) {
                     throw new DuplicateInsertException(
                         "DUP_PART_CODE",
-                        "板件重复：板件编码已存在，无法重复新增"
+                        "板件重复：板件编码已存在，无法重复新增，"
+                            + "partCode=" + existingBoard.getPartCode()
+                            + ", existingBatchNum=" + existingBoard.getBatchNum()
+                            + ", existingWorkId=" + existingBoard.getWorkId()
+                            + ", incomingBatchNum=" + incomingBatchNum
+                            + ", incomingWorkId=" + incomingWorkId
                     );
                 }
             }
         }
+    }
+
+    private void savePrePackageDataWithOverwriteInNewTransaction(MesWorkOrder workOrder, PrepackageDataDTO data) {
+        prePackageOverwriteTxService.execute(() -> savePrePackageDataWithOverwrite(workOrder, data));
     }
 
     private boolean tryAcquireWorkOrder(Long workOrderId) {
@@ -581,6 +598,8 @@ public class PrePackageServiceImpl implements PrePackageService {
         Long workOrderId = workOrder.getId();
 
         log.info("开始覆盖保存预包装数据（数据修正模式），工单号: {}", workId);
+        // 先校验再删除，避免校验失败时破坏已有数据。
+        validateInsertCandidates(workOrder, data.getPrePackageInfo());
 
         List<MesPrepackageOrder> existingOrders = prepackageOrderMapper.selectList(
             new LambdaQueryWrapper<MesPrepackageOrder>()
@@ -618,7 +637,8 @@ public class PrePackageServiceImpl implements PrePackageService {
         log.info("物理删除旧预包装订单数量: {}", deletedOrders);
 
         // 5. 插入新的预包装数据（复用原有的保存逻辑）
-        savePrePackageDataInternal(workOrder, data, null);
+        // 这里传空Map表示跳过二次校验，并按纯新增路径写入。
+        savePrePackageDataInternal(workOrder, data, new HashMap<>());
 
         log.info("预包装数据覆盖完成，工单号: {}", workId);
     }
