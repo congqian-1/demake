@@ -20,6 +20,7 @@ package com.tongzhou.mes.service1.service.impl;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.tongzhou.mes.service1.converter.BatchConverter;
 import com.tongzhou.mes.service1.mapper.MesBatchMapper;
+import com.tongzhou.mes.service1.mapper.MesBoardMapper;
 import com.tongzhou.mes.service1.mapper.MesOptimizationFileMapper;
 import com.tongzhou.mes.service1.mapper.MesWorkOrderMapper;
 import com.tongzhou.mes.service1.pojo.bo.BatchSaveResult;
@@ -33,6 +34,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 /**
  * 批次服务实现类
  *
@@ -44,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class BatchServiceImpl implements BatchService {
 
     private final MesBatchMapper batchMapper;
+    private final MesBoardMapper boardMapper;
     private final MesOptimizationFileMapper optimizationFileMapper;
     private final MesWorkOrderMapper workOrderMapper;
     private final BatchConverter batchConverter;
@@ -142,10 +147,33 @@ public class BatchServiceImpl implements BatchService {
             }
         }
 
+        // 每次推送后先清理本次批次/工单历史板件，避免板件跨工单迁移时产生唯一键冲突。
+        int deletedBoards = deleteBoardsForTargetedWorkIds(batchNum, saveResult.getTargetedWorkIds());
+        log.info("批次推送后板件清理完成，批次号: {}, 涉及工单数: {}, 删除板件数: {}",
+            batchNum, new LinkedHashSet<>(saveResult.getTargetedWorkIds()).size(), deletedBoards);
+
         log.info("批次推送处理完成，批次号: {}, 优化文件数: {}, 工单数: {}", 
                 batchNum, request.getOptimizingFiles().size(), totalWorkOrders);
         
         return saveResult;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int deleteBoardsByBatchAndWork(String batchNum, String workId) {
+        log.info("开始删除板件，批次号: {}, 工单号: {}", batchNum, workId);
+        int deleted = boardMapper.physicalDeleteByBatchNumAndWorkId(batchNum, workId);
+        log.info("板件删除完成，批次号: {}, 工单号: {}, 删除数量: {}", batchNum, workId, deleted);
+        return deleted;
+    }
+
+    private int deleteBoardsForTargetedWorkIds(String batchNum, java.util.List<String> targetedWorkIds) {
+        Set<String> dedupWorkIds = new LinkedHashSet<>(targetedWorkIds);
+        int totalDeleted = 0;
+        for (String workId : dedupWorkIds) {
+            totalDeleted += boardMapper.physicalDeleteByBatchNumAndWorkId(batchNum, workId);
+        }
+        return totalDeleted;
     }
 
     private void mergeBatch(MesBatch batch, BatchPushRequest request) {

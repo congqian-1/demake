@@ -40,4 +40,9 @@ public interface BatchService {
      * 保存批次数据并返回本次请求涉及的工单集合。
      */
     BatchSaveResult saveBatchWithResult(BatchPushRequest request);
+
+    /**
+     * 删除指定批次工单对应的板件数据。
+     */
+    int deleteBoardsByBatchAndWork(String batchNum, String workId);
 }

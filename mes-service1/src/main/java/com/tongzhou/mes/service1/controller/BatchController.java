@@ -18,6 +18,7 @@
 package com.tongzhou.mes.service1.controller;
 
 import com.tongzhou.mes.service1.pojo.dto.BatchPushRequest;
+import com.tongzhou.mes.service1.pojo.dto.BatchBoardDeleteRequest;
 import com.tongzhou.mes.service1.pojo.dto.BatchPushSyncRequest;
 import com.tongzhou.mes.service1.pojo.dto.BatchPushSyncResponse;
 import com.tongzhou.mes.service1.service.BatchService;
@@ -114,6 +115,35 @@ public class BatchController {
             response.setSuccess(false);
             response.setMessage("同步批次推送失败: " + e.getMessage());
             response.setBatchNum(request.getBatchNum());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    /**
+     * 删除指定批次工单对应的板件。
+     */
+    @PostMapping("/delete-boards")
+    @Operation(summary = "删除板件", description = "按批次号和工单号删除已推送板件")
+    public ResponseEntity<Map<String, Object>> deleteBoards(@Validated @RequestBody BatchBoardDeleteRequest request) {
+        try {
+            log.info("收到删除板件请求，批次号: {}, 工单号: {}", request.getBatchNum(), request.getWorkId());
+            int deletedCount = batchService.deleteBoardsByBatchAndWork(request.getBatchNum(), request.getWorkId());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "板件删除成功");
+            response.put("batchNum", request.getBatchNum());
+            response.put("workId", request.getWorkId());
+            response.put("deletedCount", deletedCount);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("删除板件失败，批次号: {}, 工单号: {}, 错误: {}",
+                request.getBatchNum(), request.getWorkId(), e.getMessage(), e);
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", false);
+            response.put("message", "删除板件失败: " + e.getMessage());
+            response.put("batchNum", request.getBatchNum());
+            response.put("workId", request.getWorkId());
             return ResponseEntity.status(500).body(response);
         }
     }

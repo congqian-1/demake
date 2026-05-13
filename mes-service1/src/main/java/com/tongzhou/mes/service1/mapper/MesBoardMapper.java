@@ -72,6 +72,19 @@ public interface MesBoardMapper extends BaseMapper<MesBoard> {
     int physicalDeleteByPackageIds(@Param("packageIds") List<Long> packageIds);
 
     /**
+     * Physically delete boards by batch number.
+     */
+    @Delete("DELETE FROM mes_part WHERE batch_num = #{batchNum}")
+    int physicalDeleteByBatchNum(@Param("batchNum") String batchNum);
+
+    /**
+     * Physically delete boards by batchNum and workId.
+     */
+    @Delete("DELETE FROM mes_part WHERE batch_num = #{batchNum} AND work_id = #{workId}")
+    int physicalDeleteByBatchNumAndWorkId(@Param("batchNum") String batchNum,
+                                          @Param("workId") String workId);
+
+    /**
      * Select boards by batch/work and include logically deleted rows.
      */
     @Select("SELECT * FROM mes_part WHERE batch_num = #{batchNum} AND work_id = #{workId}")

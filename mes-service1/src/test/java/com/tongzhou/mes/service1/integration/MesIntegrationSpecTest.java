@@ -265,6 +265,55 @@ class MesIntegrationSpecTest {
     }
 
     @Test
+    void story1_batchPush_shouldDeleteBoardsByBatchAndWork() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId1 = unique("WO");
+        String workId2 = unique("WO");
+        pushBatch(batchNum, workId1);
+        pushBatch(batchNum, workId2);
+        prePackagePullTask.pullPrePackageData();
+
+        assertEquals("PULLED", waitForWorkOrderStatus(workId1, "PULLED", 5000).getPrepackageStatus());
+        assertEquals("PULLED", waitForWorkOrderStatus(workId2, "PULLED", 5000).getPrepackageStatus());
+
+        long work1Before = boardMapper.selectCount(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getBatchNum, batchNum)
+                .eq(MesBoard::getWorkId, workId1)
+                .eq(MesBoard::getIsDeleted, 0));
+        long work2Before = boardMapper.selectCount(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getBatchNum, batchNum)
+                .eq(MesBoard::getWorkId, workId2)
+                .eq(MesBoard::getIsDeleted, 0));
+        assertEquals(3L, work1Before);
+        assertEquals(3L, work2Before);
+
+        mockMvc.perform(post("/api/v1/third-party/batch/delete-boards")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"batchNum\":\"" + batchNum + "\",\"workId\":\"" + workId1 + "\"}"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.deletedCount").value(3))
+            .andExpect(jsonPath("$.batchNum").value(batchNum))
+            .andExpect(jsonPath("$.workId").value(workId1));
+
+        long work1After = boardMapper.selectCount(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getBatchNum, batchNum)
+                .eq(MesBoard::getWorkId, workId1)
+                .eq(MesBoard::getIsDeleted, 0));
+        long work2After = boardMapper.selectCount(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getBatchNum, batchNum)
+                .eq(MesBoard::getWorkId, workId2)
+                .eq(MesBoard::getIsDeleted, 0));
+
+        assertEquals(0L, work1After);
+        assertEquals(3L, work2After);
+    }
+
+    @Test
     void story2_pullPending_shouldPersistAllLevels_andStandardList() throws Exception {
         String batchNum = unique("BATCH");
         String workId = unique("WO");
@@ -832,6 +881,11 @@ class MesIntegrationSpecTest {
         prePackagePullTask.pullPrePackageData();
         assertEquals("PULLED", waitForWorkOrderStatus(workId1, "PULLED", 5000).getPrepackageStatus());
         assertEquals("PULLED", waitForWorkOrderStatus(workId2, "PULLED", 5000).getPrepackageStatus());
+        long boardsBefore = boardMapper.selectCount(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getBatchNum, batchNum)
+                .eq(MesBoard::getIsDeleted, 0));
+        assertTrue(boardsBefore > 0);
 
         mockMvc.perform(post("/api/v1/admin/work-order/batch/{batchNum}/repull", batchNum)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -842,6 +896,11 @@ class MesIntegrationSpecTest {
 
         assertEquals("NOT_PULLED", getWorkOrder(workId1).getPrepackageStatus());
         assertEquals("NOT_PULLED", getWorkOrder(workId2).getPrepackageStatus());
+        long boardsAfter = boardMapper.selectCount(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getBatchNum, batchNum)
+                .eq(MesBoard::getIsDeleted, 0));
+        assertEquals(0L, boardsAfter);
     }
 
     @Test

@@ -249,23 +249,7 @@ public class PrePackageServiceImpl implements PrePackageService {
             }
         }
 
-        if (!incomingPartCodes.isEmpty()) {
-            List<MesBoard> existingBoards = boardMapper.selectByPartCodesIncludeDeleted(new ArrayList<>(incomingPartCodes));
-            for (MesBoard existingBoard : existingBoards) {
-                if (!workOrder.getWorkId().equals(existingBoard.getWorkId())
-                    || !workOrder.getBatchNum().equals(existingBoard.getBatchNum())) {
-                    throw new DuplicateInsertException(
-                        "DUP_PART_CODE",
-                        "板件重复：板件编码已存在，无法重复新增，"
-                            + "partCode=" + existingBoard.getPartCode()
-                            + ", existingBatchNum=" + existingBoard.getBatchNum()
-                            + ", existingWorkId=" + existingBoard.getWorkId()
-                            + ", incomingBatchNum=" + incomingBatchNum
-                            + ", incomingWorkId=" + incomingWorkId
-                    );
-                }
-            }
-        }
+        // 覆盖保存场景允许同工单重复推送，库内冲突由删除+插入流程保证，这里只校验本次入参内部重复。
     }
 
     private void savePrePackageDataWithOverwriteInNewTransaction(MesWorkOrder workOrder, PrepackageDataDTO data) {
@@ -690,6 +674,9 @@ public class PrePackageServiceImpl implements PrePackageService {
         if (workOrders.isEmpty()) {
             throw new RuntimeException("批次不存在或批次下无工单: " + batchNum);
         }
+
+        int deletedBoards = boardMapper.physicalDeleteByBatchNum(batchNum);
+        log.info("批次重拉前已删除板件，批次号: {}, 删除数量: {}", batchNum, deletedBoards);
 
         for (MesWorkOrder workOrder : workOrders) {
             MesCorrectionLog correctionLog = buildCorrectionLog(workOrder, operator, reason, "NOT_PULLED");
