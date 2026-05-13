@@ -522,9 +522,9 @@ class MesIntegrationSpecTest {
         prePackagePullTask.pullPrePackageData();
 
         MesWorkOrder refreshed = getWorkOrder(batchNum, workId);
-        assertEquals("NOT_PULLED", refreshed.getPrepackageStatus());
-        assertEquals(1, refreshed.getRetryCount());
-        assertTrue(refreshed.getErrorMessage() != null && refreshed.getErrorMessage().contains("EXCEPTION"));
+        assertEquals("FAILED", refreshed.getPrepackageStatus());
+        assertEquals(3, refreshed.getRetryCount());
+        assertTrue(refreshed.getErrorMessage() != null && refreshed.getErrorMessage().contains("板件重复"));
     }
 
     @Test

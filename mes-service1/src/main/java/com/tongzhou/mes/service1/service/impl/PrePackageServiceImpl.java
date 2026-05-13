@@ -246,6 +246,25 @@ public class PrePackageServiceImpl implements PrePackageService {
                         );
                     }
                 }
+
+            }
+        }
+
+        if (!incomingPartCodes.isEmpty()) {
+            List<MesBoard> existingBoards = boardMapper.selectByPartCodesIncludeDeleted(new ArrayList<>(incomingPartCodes));
+            for (MesBoard existingBoard : existingBoards) {
+                if (!workOrder.getWorkId().equals(existingBoard.getWorkId())
+                    || !workOrder.getBatchNum().equals(existingBoard.getBatchNum())) {
+                    throw new DuplicateInsertException(
+                        "DUP_PART_CODE",
+                        "板件重复：不同批次或工单的板件编码已存在，无法重复新增，"
+                            + "partCode=" + existingBoard.getPartCode()
+                            + ", existingBatchNum=" + existingBoard.getBatchNum()
+                            + ", existingWorkId=" + existingBoard.getWorkId()
+                            + ", incomingBatchNum=" + incomingBatchNum
+                            + ", incomingWorkId=" + incomingWorkId
+                    );
+                }
             }
         }
 
