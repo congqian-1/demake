@@ -498,6 +498,68 @@ class MesIntegrationSpecTest {
         assertTrue(failureMailSentToMe);
     }
 
+    @Test
+    void story2_pullPending_shouldNotLeaveUpdating_whenDuplicateKeyOccursOnBoardInsert() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId = unique("WO");
+        pushBatch(batchNum, workId);
+
+        List<String> incomingPartCodes = Arrays.asList(
+            "DUP-" + System.nanoTime() + "-1",
+            "DUP-" + System.nanoTime() + "-2",
+            "DUP-" + System.nanoTime() + "-3"
+        );
+        Mockito.doReturn(buildDtoWithPartCodes(batchNum, workId, incomingPartCodes))
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(batchNum, workId);
+
+        // 预置冲突板件，模拟跨批次已存在同 partCode。
+        jdbcTemplate.update(
+            "INSERT INTO mes_part (package_id, box_id, batch_num, work_id, part_code, is_deleted) VALUES (?, ?, ?, ?, ?, ?)",
+            999L, 999L, unique("OTHER-BATCH"), unique("OTHER-WORK"), incomingPartCodes.get(0), 0
+        );
+
+        prePackagePullTask.pullPrePackageData();
+
+        MesWorkOrder refreshed = getWorkOrder(batchNum, workId);
+        assertEquals("NOT_PULLED", refreshed.getPrepackageStatus());
+        assertEquals(1, refreshed.getRetryCount());
+        assertTrue(refreshed.getErrorMessage() != null && refreshed.getErrorMessage().contains("EXCEPTION"));
+    }
+
+    @Test
+    void story2_pullPending_shouldClearOrphanBoardsByBatchAndWork_beforeOverwriteInsert() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId = unique("WO");
+        pushBatch(batchNum, workId);
+
+        List<String> incomingPartCodes = Arrays.asList(
+            "ORPHAN-" + System.nanoTime() + "-1",
+            "ORPHAN-" + System.nanoTime() + "-2",
+            "ORPHAN-" + System.nanoTime() + "-3"
+        );
+        Mockito.doReturn(buildDtoWithPartCodes(batchNum, workId, incomingPartCodes))
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(batchNum, workId);
+
+        // 预置同 batch/work 的孤儿板件（不在当前订单链路中），验证 overwrite 兜底清理可避免唯一键冲突。
+        jdbcTemplate.update(
+            "INSERT INTO mes_part (package_id, box_id, batch_num, work_id, part_code, is_deleted) VALUES (?, ?, ?, ?, ?, ?)",
+            888L, 888L, batchNum, workId, incomingPartCodes.get(0), 0
+        );
+
+        prePackagePullTask.pullPrePackageData();
+
+        MesWorkOrder refreshed = getWorkOrder(batchNum, workId);
+        assertEquals("PULLED", refreshed.getPrepackageStatus());
+        long activeBoards = boardMapper.selectCount(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getBatchNum, batchNum)
+                .eq(MesBoard::getWorkId, workId)
+                .eq(MesBoard::getIsDeleted, 0));
+        assertEquals(3L, activeBoards);
+    }
+
     private void insertEmailConfig() {
         jdbcTemplate.update(
             "INSERT INTO mes_email_notification_config " +

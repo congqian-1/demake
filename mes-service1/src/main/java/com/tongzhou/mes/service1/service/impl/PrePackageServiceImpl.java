@@ -169,13 +169,13 @@ public class PrePackageServiceImpl implements PrePackageService {
             log.error("工单预包装数据拉取失败，工单号: {}, 错误: {}", workId, e.getMessage(), e);
             logThirdPartyCall(batchNum, workId, "EXCEPTION: " + e.getMessage());
             String diagnostic = buildDiagnosticMessage("EXCEPTION: " + e.getMessage(), batchNum, workId);
-            Integer retryCountOverride;
+            Integer retryCountOverride = null;
             if (forceFailOnError) {
                 retryCountOverride = MAX_RETRY_COUNT;
-            } else {
-                retryCountOverride = e instanceof RetryExhaustedException
-                    ? ((RetryExhaustedException) e).getRetryCount()
-                    : (e instanceof DuplicateInsertException ? MAX_RETRY_COUNT : null);
+            } else if (e instanceof RetryExhaustedException) {
+                retryCountOverride = ((RetryExhaustedException) e).getRetryCount();
+            } else if (e instanceof DuplicateInsertException) {
+                retryCountOverride = MAX_RETRY_COUNT;
             }
             handlePullFailure(workOrder, diagnostic, retryCountOverride, forceFailOnError);
             throw e;
@@ -599,11 +599,14 @@ public class PrePackageServiceImpl implements PrePackageService {
             : packageMapper.selectByBoxIds(existingBoxIds);
         List<Long> existingPackageIds = collectPackageIds(existingPackages);
 
-        int deletedBoards = 0;
+        int deletedBoardsByPackage = 0;
         if (!existingPackageIds.isEmpty()) {
-            deletedBoards = boardMapper.physicalDeleteByPackageIds(existingPackageIds);
+            deletedBoardsByPackage = boardMapper.physicalDeleteByPackageIds(existingPackageIds);
         }
-        log.info("物理删除旧板件数量: {}", deletedBoards);
+        int deletedBoardsByBatchWork = boardMapper.physicalDeleteByBatchNumAndWorkId(workOrder.getBatchNum(), workId);
+        int deletedBoards = deletedBoardsByPackage + deletedBoardsByBatchWork;
+        log.info("物理删除旧板件数量: {}（package链路: {}, batch/work兜底: {}）",
+            deletedBoards, deletedBoardsByPackage, deletedBoardsByBatchWork);
 
         int deletedPackages = 0;
         if (!existingBoxIds.isEmpty()) {
