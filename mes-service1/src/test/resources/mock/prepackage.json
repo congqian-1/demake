@@ -58,10 +58,17 @@
                 "YAxis": 2,
                 "ZAxis": 3,
                 "SortOrder": 1,
-                "StandardCode": "STD-A",
-                "Rotate": "0",
-                "ProcessCode": "PROC-A",
-                "StandardList": "[\"STD-A\"]"
+	                "StandardCode": "STD-A",
+	                "Rotate": "0",
+	                "ProcessCode": "PROC-A",
+	                "Workmanship": "WORKMANSHIP-A",
+	                "OrderNumber": "ORDER-NO-A",
+	                "SealingFlatNoodles": "SEAL-A",
+	                "Texture": "TEXTURE-A",
+	                "ContainerNumber": "CONTAINER-A",
+	                "SetNumber": "SET-A",
+	                "Groove": "GROOVE-A",
+	                "StandardList": "[\"STD-A\"]"
               },
               {
                 "PartCode": "PART-TEMPLATE-2",
@@ -77,10 +84,17 @@
                 "YAxis": 5,
                 "ZAxis": 6,
                 "SortOrder": 2,
-                "StandardCode": "STD-B",
-                "Rotate": "1",
-                "ProcessCode": "PROC-B",
-                "StandardList": "[\"STD-B\"]"
+	                "StandardCode": "STD-B",
+	                "Rotate": "1",
+	                "ProcessCode": "PROC-B",
+	                "Workmanship": "WORKMANSHIP-B",
+	                "OrderNumber": "ORDER-NO-B",
+	                "SealingFlatNoodles": "SEAL-B",
+	                "Texture": "TEXTURE-B",
+	                "ContainerNumber": "CONTAINER-B",
+	                "SetNumber": "SET-B",
+	                "Groove": "GROOVE-B",
+	                "StandardList": "[\"STD-B\"]"
               }
             ]
           }
@@ -119,10 +133,17 @@
                 "YAxis": 8,
                 "ZAxis": 9,
                 "SortOrder": 3,
-                "StandardCode": "STD-C",
-                "Rotate": "0",
-                "ProcessCode": "PROC-C",
-                "StandardList": "[\"STD-C\"]"
+	                "StandardCode": "STD-C",
+	                "Rotate": "0",
+	                "ProcessCode": "PROC-C",
+	                "Workmanship": "WORKMANSHIP-C",
+	                "OrderNumber": "ORDER-NO-C",
+	                "SealingFlatNoodles": "SEAL-C",
+	                "Texture": "TEXTURE-C",
+	                "ContainerNumber": "CONTAINER-C",
+	                "SetNumber": "SET-C",
+	                "Groove": "GROOVE-C",
+	                "StandardList": "[\"STD-C\"]"
               }
             ]
           }

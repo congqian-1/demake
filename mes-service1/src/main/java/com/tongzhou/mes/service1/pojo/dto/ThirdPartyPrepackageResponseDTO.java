@@ -120,6 +120,20 @@ public class ThirdPartyPrepackageResponseDTO {
         private String rotate;
         @JsonAlias({"ProcessCode", "process_code"})
         private String processCode;
+        @JsonAlias({"Workmanship", "FC76"})
+        private String workmanship;
+        @JsonAlias({"OrderNumber", "FFDH"})
+        private String orderNumber;
+        @JsonAlias({"SealingFlatNoodles", "FC22"})
+        private String sealingFlatNoodles;
+        @JsonAlias({"Texture", "FC34"})
+        private String texture;
+        @JsonAlias({"ContainerNumber", "FI1"})
+        private String containerNumber;
+        @JsonAlias({"SetNumber", "FI7"})
+        private String setNumber;
+        @JsonAlias({"Groove", "FC21"})
+        private String groove;
         private Integer condition;
     }
 }

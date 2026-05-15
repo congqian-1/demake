@@ -437,6 +437,13 @@ class MesIntegrationSpecTest {
         assertNotNull(board.getSortOrder());
         assertNotNull(board.getRotate());
         assertNotNull(board.getProcessCode());
+        assertNotNull(board.getWorkmanship());
+        assertNotNull(board.getOrderNumber());
+        assertNotNull(board.getSealingFlatNoodles());
+        assertNotNull(board.getTexture());
+        assertNotNull(board.getContainerNumber());
+        assertNotNull(board.getSetNumber());
+        assertNotNull(board.getGroove());
         assertEquals(0, board.getIsDeleted());
 
         List<MesBoard> boards = boardMapper.selectList(
@@ -447,6 +454,13 @@ class MesIntegrationSpecTest {
         assertEquals(3, boards.size());
         assertEquals("0", boards.get(0).getRotate());
         assertEquals("PROC-A", boards.get(0).getProcessCode());
+        assertEquals("WORKMANSHIP-A", boards.get(0).getWorkmanship());
+        assertEquals("ORDER-NO-A", boards.get(0).getOrderNumber());
+        assertEquals("SEAL-A", boards.get(0).getSealingFlatNoodles());
+        assertEquals("TEXTURE-A", boards.get(0).getTexture());
+        assertEquals("CONTAINER-A", boards.get(0).getContainerNumber());
+        assertEquals("SET-A", boards.get(0).getSetNumber());
+        assertEquals("GROOVE-A", boards.get(0).getGroove());
         assertEquals("1", boards.get(1).getRotate());
         assertEquals("PROC-B", boards.get(1).getProcessCode());
         assertEquals("0", boards.get(2).getRotate());
@@ -475,7 +489,8 @@ class MesIntegrationSpecTest {
         Mockito.reset(mailSender);
         String batchNum = unique("BATCH");
         String workId = unique("WO");
-        insertEmailConfig();
+        insertEmailConfig("243219169@qq.com");
+        insertEmailConfig("qth554021349@qq.com");
         pushBatch(batchNum, workId);
 
         Mockito.doThrow(new RuntimeException("mock failure"))
@@ -491,11 +506,15 @@ class MesIntegrationSpecTest {
             .sendPrepackagePullFailureNotification(Mockito.eq(batchNum), Mockito.eq(workId), Mockito.anyString(), Mockito.eq(3));
 
         ArgumentCaptor<SimpleMailMessage> mailCaptor = ArgumentCaptor.forClass(SimpleMailMessage.class);
-        Mockito.verify(mailSender, Mockito.atLeastOnce()).send(mailCaptor.capture());
+        Mockito.verify(mailSender, Mockito.timeout(3000).times(2)).send(mailCaptor.capture());
         boolean failureMailSentToMe = mailCaptor.getAllValues().stream()
             .filter(msg -> msg.getSubject() != null && msg.getSubject().contains("预包装数据拉取失败"))
             .anyMatch(msg -> msg.getTo() != null && Arrays.asList(msg.getTo()).contains("243219169@qq.com"));
         assertTrue(failureMailSentToMe);
+        boolean failureMailSentToNewReceiver = mailCaptor.getAllValues().stream()
+            .filter(msg -> msg.getSubject() != null && msg.getSubject().contains("预包装数据拉取失败"))
+            .anyMatch(msg -> msg.getTo() != null && Arrays.asList(msg.getTo()).contains("qth554021349@qq.com"));
+        assertTrue(failureMailSentToNewReceiver);
     }
 
     @Test
@@ -560,13 +579,13 @@ class MesIntegrationSpecTest {
         assertEquals(3L, activeBoards);
     }
 
-    private void insertEmailConfig() {
+    private void insertEmailConfig(String toAddress) {
         jdbcTemplate.update(
             "INSERT INTO mes_email_notification_config " +
                 "(smtp_host, smtp_port, username, password, from_address, to_addresses, enabled, is_deleted, created_by) " +
                 "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             "smtp.qq.com", 587, "243219169@qq.com", "mock-pass",
-            "243219169@qq.com", "243219169@qq.com", 1, 0, "TEST"
+            "243219169@qq.com", toAddress, 1, 0, "TEST"
         );
     }
 
@@ -581,6 +600,7 @@ class MesIntegrationSpecTest {
             new LambdaQueryWrapper<MesBoard>()
                 .eq(MesBoard::getWorkId, workId)
                 .eq(MesBoard::getIsDeleted, 0)
+                .orderByAsc(MesBoard::getPartCode)
                 .last("LIMIT 1"));
         assertNotNull(board);
         String partCode = board.getPartCode();
@@ -597,7 +617,14 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.type").value("TYPE-" + batchNum))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.fdd8").value("FDD8-" + batchNum + "-" + workId))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].rotate").value("0"))
-            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].processCode").value("PROC-A"));
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].processCode").value("PROC-A"))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].workmanship").value("WORKMANSHIP-A"))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].orderNumber").value("ORDER-NO-A"))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].sealingFlatNoodles").value("SEAL-A"))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].texture").value("TEXTURE-A"))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].containerNumber").value("CONTAINER-A"))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].setNumber").value("SET-A"))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].groove").value("GROOVE-A"));
 
         mockMvc.perform(get("/api/v1/production/part/{partCode}/package", partCode))
             .andExpect(status().isOk())
@@ -605,7 +632,14 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.data.prepackageOrder.type").value("TYPE-" + batchNum))
             .andExpect(jsonPath("$.data.prepackageOrder.fdd8").value("FDD8-" + batchNum + "-" + workId))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].rotate").value("0"))
-            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].processCode").value("PROC-A"));
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].processCode").value("PROC-A"))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].workmanship").value("WORKMANSHIP-A"))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].orderNumber").value("ORDER-NO-A"))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].sealingFlatNoodles").value("SEAL-A"))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].texture").value("TEXTURE-A"))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].containerNumber").value("CONTAINER-A"))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].setNumber").value("SET-A"))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].groove").value("GROOVE-A"));
 
         mockMvc.perform(get("/api/v1/production/part/{partCode}/detail", partCode))
             .andExpect(status().isOk())
@@ -614,7 +648,14 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.prepackageOrder.type").value("TYPE-" + batchNum))
             .andExpect(jsonPath("$.prepackageOrder.fdd8").value("FDD8-" + batchNum + "-" + workId))
             .andExpect(jsonPath("$.rotate").value("0"))
-            .andExpect(jsonPath("$.processCode").value("PROC-A"));
+            .andExpect(jsonPath("$.processCode").value("PROC-A"))
+            .andExpect(jsonPath("$.workmanship").value("WORKMANSHIP-A"))
+            .andExpect(jsonPath("$.orderNumber").value("ORDER-NO-A"))
+            .andExpect(jsonPath("$.sealingFlatNoodles").value("SEAL-A"))
+            .andExpect(jsonPath("$.texture").value("TEXTURE-A"))
+            .andExpect(jsonPath("$.containerNumber").value("CONTAINER-A"))
+            .andExpect(jsonPath("$.setNumber").value("SET-A"))
+            .andExpect(jsonPath("$.groove").value("GROOVE-A"));
 
         // 状态为 UPDATING 时返回 409
         MesWorkOrder workOrder = getWorkOrder(workId);

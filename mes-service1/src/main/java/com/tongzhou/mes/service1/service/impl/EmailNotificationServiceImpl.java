@@ -21,14 +21,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.tongzhou.mes.service1.mapper.MesEmailConfigMapper;
 import com.tongzhou.mes.service1.pojo.entity.MesEmailConfig;
 import com.tongzhou.mes.service1.service.EmailNotificationService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 邮件通知服务实现类
@@ -37,24 +40,29 @@ import java.time.format.DateTimeFormatter;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class EmailNotificationServiceImpl implements EmailNotificationService {
 
     private final JavaMailSender mailSender;
     private final MesEmailConfigMapper emailConfigMapper;
+    private final ThreadPoolTaskExecutor emailNotificationExecutor;
     
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    public EmailNotificationServiceImpl(JavaMailSender mailSender,
+            MesEmailConfigMapper emailConfigMapper,
+            @Qualifier("emailNotificationExecutor") ThreadPoolTaskExecutor emailNotificationExecutor) {
+        this.mailSender = mailSender;
+        this.emailConfigMapper = emailConfigMapper;
+        this.emailNotificationExecutor = emailNotificationExecutor;
+    }
 
     @Override
     public void sendPrepackagePullFailureNotification(String batchNo, String workOrderNo, 
             String failureReason, int retryCount) {
         try {
-            // 查询邮件配置
-            MesEmailConfig config = emailConfigMapper.selectOne(
-                    new LambdaQueryWrapper<MesEmailConfig>()
-                            .eq(MesEmailConfig::getEnabled, 1));
+            List<MesEmailConfig> configs = queryEnabledConfigs();
             
-            if (config == null) {
+            if (configs.isEmpty()) {
                 log.warn("未找到启用的数据拉取失败邮件通知配置，跳过发送");
                 return;
             }
@@ -63,10 +71,13 @@ public class EmailNotificationServiceImpl implements EmailNotificationService {
             String subject = String.format("[MES告警] 预包装数据拉取失败 - 工单号: %s", workOrderNo);
             String content = buildPrepackagePullFailureContent(batchNo, workOrderNo, failureReason, retryCount);
             
-            // 发送邮件
-            sendEmail(config.getFromAddress(), config.getToAddresses(), null, subject, content);
+            // 异步逐条发送，避免邮件服务阻塞拉取失败处理流程。
+            for (MesEmailConfig config : configs) {
+                emailNotificationExecutor.execute(() -> sendEmailSafely(config, null, subject, content));
+            }
             
-            log.info("预包装数据拉取失败通知邮件已发送，工单号: {}, 重试次数: {}", workOrderNo, retryCount);
+            log.info("预包装数据拉取失败通知邮件已提交异步发送，工单号: {}, 重试次数: {}, 配置数量: {}",
+                workOrderNo, retryCount, configs.size());
             
         } catch (Exception e) {
             log.error("发送预包装数据拉取失败通知邮件失败，工单号: {}, 错误信息: {}", workOrderNo, e.getMessage(), e);
@@ -76,12 +87,9 @@ public class EmailNotificationServiceImpl implements EmailNotificationService {
     @Override
     public void sendBatchReceiveNotification(String batchNo, int workOrderCount) {
         try {
-            // 查询邮件配置
-            MesEmailConfig config = emailConfigMapper.selectOne(
-                    new LambdaQueryWrapper<MesEmailConfig>()
-                            .eq(MesEmailConfig::getEnabled, 1));
+            List<MesEmailConfig> configs = queryEnabledConfigs();
             
-            if (config == null) {
+            if (configs.isEmpty()) {
                 log.info("未找到启用的批次接收邮件通知配置，跳过发送");
                 return;
             }
@@ -90,13 +98,31 @@ public class EmailNotificationServiceImpl implements EmailNotificationService {
             String subject = String.format("[MES通知] 批次数据接收成功 - 批次号: %s", batchNo);
             String content = buildBatchReceiveContent(batchNo, workOrderCount);
             
-            // 发送邮件
-            sendEmail(config.getFromAddress(), config.getToAddresses(), null, subject, content);
+            for (MesEmailConfig config : configs) {
+                emailNotificationExecutor.execute(() -> sendEmailSafely(config, null, subject, content));
+            }
             
-            log.info("批次接收通知邮件已发送，批次号: {}, 工单数量: {}", batchNo, workOrderCount);
+            log.info("批次接收通知邮件已提交异步发送，批次号: {}, 工单数量: {}, 配置数量: {}",
+                batchNo, workOrderCount, configs.size());
             
         } catch (Exception e) {
             log.error("发送批次接收通知邮件失败，批次号: {}, 错误信息: {}", batchNo, e.getMessage(), e);
+        }
+    }
+
+    private List<MesEmailConfig> queryEnabledConfigs() {
+        return emailConfigMapper.selectList(
+            new LambdaQueryWrapper<MesEmailConfig>()
+                .eq(MesEmailConfig::getEnabled, 1));
+    }
+
+    private void sendEmailSafely(MesEmailConfig config, String cc, String subject, String content) {
+        try {
+            sendEmail(config.getFromAddress(), config.getToAddresses(), cc, subject, content);
+            log.info("邮件通知发送成功，配置ID: {}, 收件人: {}", config.getId(), config.getToAddresses());
+        } catch (Exception e) {
+            log.error("邮件通知发送失败，配置ID: {}, 收件人: {}, 错误信息: {}",
+                config.getId(), config.getToAddresses(), e.getMessage(), e);
         }
     }
 
@@ -112,12 +138,12 @@ public class EmailNotificationServiceImpl implements EmailNotificationService {
 
         // 收件人（多个邮箱用逗号分隔）
         if (recipients != null && !recipients.trim().isEmpty()) {
-            message.setTo(recipients.split(","));
+            message.setTo(splitAddresses(recipients));
         }
         
         // 抄送
         if (cc != null && !cc.trim().isEmpty()) {
-            message.setCc(cc.split(","));
+            message.setCc(splitAddresses(cc));
         }
         
         message.setSubject(subject);
@@ -125,6 +151,17 @@ public class EmailNotificationServiceImpl implements EmailNotificationService {
         message.setSentDate(new java.util.Date());
         
         mailSender.send(message);
+    }
+
+    private String[] splitAddresses(String addresses) {
+        String[] rawAddresses = addresses.split(",");
+        List<String> result = new ArrayList<>();
+        for (String address : rawAddresses) {
+            if (address != null && !address.trim().isEmpty()) {
+                result.add(address.trim());
+            }
+        }
+        return result.toArray(new String[0]);
     }
 
     /**

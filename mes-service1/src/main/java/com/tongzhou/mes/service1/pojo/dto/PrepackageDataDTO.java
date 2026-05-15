@@ -247,6 +247,34 @@ public class PrepackageDataDTO {
         @JsonAlias({"processCode", "process_code"})
         private String processCode; // 工艺代码
 
+        @JsonProperty("Workmanship")
+        @JsonAlias({"workmanship", "FC76"})
+        private String workmanship; // 工艺名称
+
+        @JsonProperty("OrderNumber")
+        @JsonAlias({"orderNumber", "FFDH"})
+        private String orderNumber; // 分单号
+
+        @JsonProperty("SealingFlatNoodles")
+        @JsonAlias({"sealingFlatNoodles", "FC22"})
+        private String sealingFlatNoodles; // 封板条
+
+        @JsonProperty("Texture")
+        @JsonAlias({"texture", "FC34"})
+        private String texture; // 纹理
+
+        @JsonProperty("ContainerNumber")
+        @JsonAlias({"containerNumber", "FI1"})
+        private String containerNumber; // 柜号
+
+        @JsonProperty("SetNumber")
+        @JsonAlias({"setNumber", "FI7"})
+        private String setNumber; // 套号
+
+        @JsonProperty("Groove")
+        @JsonAlias({"groove", "FC21"})
+        private String groove; // 槽
+
         @JsonProperty("StandardList")
         private String standardListJson; // 标准码集合（JSON格式）
     }

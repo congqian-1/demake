@@ -144,6 +144,41 @@ public class MesBoard {
     private String processCode;
 
     /**
+     * 工艺名称
+     */
+    private String workmanship;
+
+    /**
+     * 分单号
+     */
+    private String orderNumber;
+
+    /**
+     * 封板条
+     */
+    private String sealingFlatNoodles;
+
+    /**
+     * 纹理
+     */
+    private String texture;
+
+    /**
+     * 柜号
+     */
+    private String containerNumber;
+
+    /**
+     * 套号
+     */
+    private String setNumber;
+
+    /**
+     * 槽
+     */
+    private String groove;
+
+    /**
      * 真实打包包号
      */
     private String realPackageNo;

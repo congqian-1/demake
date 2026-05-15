@@ -186,6 +186,27 @@ public class PartPackageResponse {
         @Schema(description = "分拣顺序")
         private Integer sortOrder;
 
+        @Schema(description = "工艺名称")
+        private String workmanship;
+
+        @Schema(description = "分单号")
+        private String orderNumber;
+
+        @Schema(description = "封板条")
+        private String sealingFlatNoodles;
+
+        @Schema(description = "纹理")
+        private String texture;
+
+        @Schema(description = "柜号")
+        private String containerNumber;
+
+        @Schema(description = "套号")
+        private String setNumber;
+
+        @Schema(description = "槽")
+        private String groove;
+
         @Schema(description = "标准码集合（JSON字符串）")
         private String standardList;
     }

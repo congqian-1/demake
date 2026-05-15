@@ -470,6 +470,13 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         dto.setStandardCode(part.getStandardCode());
         dto.setRotate(part.getRotate());
         dto.setProcessCode(part.getProcessCode());
+        dto.setWorkmanship(part.getWorkmanship());
+        dto.setOrderNumber(part.getOrderNumber());
+        dto.setSealingFlatNoodles(part.getSealingFlatNoodles());
+        dto.setTexture(part.getTexture());
+        dto.setContainerNumber(part.getContainerNumber());
+        dto.setSetNumber(part.getSetNumber());
+        dto.setGroove(part.getGroove());
         dto.setStandardList(part.getStandardList());
         dto.setRealPackageNo(part.getRealPackageNo());
         dto.setIsDeleted(part.getIsDeleted());
