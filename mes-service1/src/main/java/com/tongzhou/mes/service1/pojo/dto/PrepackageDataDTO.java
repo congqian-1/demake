@@ -248,34 +248,66 @@ public class PrepackageDataDTO {
         private String processCode; // 工艺代码
 
         @JsonProperty("Workmanship")
-        @JsonAlias({"workmanship", "FC76"})
+        @JsonAlias({"workmanship"})
         private String workmanship; // 工艺名称
 
         @JsonProperty("OrderNumber")
-        @JsonAlias({"orderNumber", "FFDH"})
+        @JsonAlias({"orderNumber"})
         private String orderNumber; // 分单号
 
         @JsonProperty("SealingFlatNoodles")
-        @JsonAlias({"sealingFlatNoodles", "FC22"})
+        @JsonAlias({"sealingFlatNoodles"})
         private String sealingFlatNoodles; // 封板条
 
         @JsonProperty("Texture")
-        @JsonAlias({"texture", "FC34"})
+        @JsonAlias({"texture"})
         private String texture; // 纹理
 
         @JsonProperty("ContainerNumber")
-        @JsonAlias({"containerNumber", "FI1"})
+        @JsonAlias({"containerNumber"})
         private String containerNumber; // 柜号
 
         @JsonProperty("SetNumber")
-        @JsonAlias({"setNumber", "FI7"})
+        @JsonAlias({"setNumber"})
         private String setNumber; // 套号
 
         @JsonProperty("Groove")
-        @JsonAlias({"groove", "FC21"})
+        @JsonAlias({"groove"})
         private String groove; // 槽
 
         @JsonProperty("StandardList")
         private String standardListJson; // 标准码集合（JSON格式）
+
+        public void setWorkmanship(Object workmanship) {
+            this.workmanship = asString(workmanship);
+        }
+
+        public void setOrderNumber(Object orderNumber) {
+            this.orderNumber = asString(orderNumber);
+        }
+
+        public void setSealingFlatNoodles(Object sealingFlatNoodles) {
+            this.sealingFlatNoodles = asString(sealingFlatNoodles);
+        }
+
+        public void setTexture(Object texture) {
+            this.texture = asString(texture);
+        }
+
+        public void setContainerNumber(Object containerNumber) {
+            this.containerNumber = asString(containerNumber);
+        }
+
+        public void setSetNumber(Object setNumber) {
+            this.setNumber = asString(setNumber);
+        }
+
+        public void setGroove(Object groove) {
+            this.groove = asString(groove);
+        }
+
+        private static String asString(Object value) {
+            return value == null ? null : String.valueOf(value);
+        }
     }
 }

@@ -120,20 +120,52 @@ public class ThirdPartyPrepackageResponseDTO {
         private String rotate;
         @JsonAlias({"ProcessCode", "process_code"})
         private String processCode;
-        @JsonAlias({"Workmanship", "FC76"})
+        @JsonAlias({"Workmanship"})
         private String workmanship;
-        @JsonAlias({"OrderNumber", "FFDH"})
+        @JsonAlias({"OrderNumber"})
         private String orderNumber;
-        @JsonAlias({"SealingFlatNoodles", "FC22"})
+        @JsonAlias({"SealingFlatNoodles"})
         private String sealingFlatNoodles;
-        @JsonAlias({"Texture", "FC34"})
+        @JsonAlias({"Texture"})
         private String texture;
-        @JsonAlias({"ContainerNumber", "FI1"})
+        @JsonAlias({"ContainerNumber"})
         private String containerNumber;
-        @JsonAlias({"SetNumber", "FI7"})
+        @JsonAlias({"SetNumber"})
         private String setNumber;
-        @JsonAlias({"Groove", "FC21"})
+        @JsonAlias({"Groove"})
         private String groove;
         private Integer condition;
+
+        public void setWorkmanship(Object workmanship) {
+            this.workmanship = asString(workmanship);
+        }
+
+        public void setOrderNumber(Object orderNumber) {
+            this.orderNumber = asString(orderNumber);
+        }
+
+        public void setSealingFlatNoodles(Object sealingFlatNoodles) {
+            this.sealingFlatNoodles = asString(sealingFlatNoodles);
+        }
+
+        public void setTexture(Object texture) {
+            this.texture = asString(texture);
+        }
+
+        public void setContainerNumber(Object containerNumber) {
+            this.containerNumber = asString(containerNumber);
+        }
+
+        public void setSetNumber(Object setNumber) {
+            this.setNumber = asString(setNumber);
+        }
+
+        public void setGroove(Object groove) {
+            this.groove = asString(groove);
+        }
+
+        private static String asString(Object value) {
+            return value == null ? null : String.valueOf(value);
+        }
     }
 }

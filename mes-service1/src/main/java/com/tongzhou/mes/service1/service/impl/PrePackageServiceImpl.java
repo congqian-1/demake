@@ -88,7 +88,6 @@ public class PrePackageServiceImpl implements PrePackageService {
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public SyncPullResult pullSingleWorkOrderForSync(String batchNum, String workId) {
         SyncPullResult result = new SyncPullResult();
         result.setWorkId(workId);

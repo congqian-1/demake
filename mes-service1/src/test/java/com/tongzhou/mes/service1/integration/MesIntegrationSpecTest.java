@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tongzhou.mes.service1.client.ThirdPartyMesClient;
+import com.tongzhou.mes.service1.converter.ThirdPartyPrepackageMapper;
 import com.tongzhou.mes.service1.mapper.MesBatchMapper;
 import com.tongzhou.mes.service1.mapper.MesBoardMapper;
 import com.tongzhou.mes.service1.mapper.MesBoxCodeMapper;
@@ -15,6 +16,7 @@ import com.tongzhou.mes.service1.mapper.MesWorkOrderMapper;
 import com.tongzhou.mes.service1.mapper.MesWorkReportMapper;
 import com.tongzhou.mes.service1.pojo.dto.BatchPushRequest;
 import com.tongzhou.mes.service1.pojo.dto.PrepackageDataDTO;
+import com.tongzhou.mes.service1.pojo.dto.ThirdPartyPrepackageResponseDTO;
 import com.tongzhou.mes.service1.pojo.dto.WorkReportRequest;
 import com.tongzhou.mes.service1.pojo.entity.MesBatch;
 import com.tongzhou.mes.service1.pojo.entity.MesBoard;
@@ -579,6 +581,93 @@ class MesIntegrationSpecTest {
         assertEquals(3L, activeBoards);
     }
 
+    @Test
+    void thirdPartyNewFormat_shouldMapPartExtraFieldsFromLowerCamelAndNumericValues() throws Exception {
+        String batchNum = unique("BATCH");
+        String workId = unique("WO");
+        String partCode = unique("PART");
+        String boxCode = unique("BOX");
+
+        ObjectNode root = objectMapper.createObjectNode();
+        root.put("code", 0);
+        root.put("msg", "执行成功");
+
+        ObjectNode dataItem = root.putArray("data").addObject();
+        dataItem.put("workNum", workId);
+        dataItem.put("orderNum", "ORDER-NEW-FIELDS");
+
+        ObjectNode prePackageInfo = dataItem.putArray("prePackageInfo").addObject();
+        prePackageInfo.put("setno", 1);
+        prePackageInfo.put("boxCode", boxCode);
+
+        ObjectNode boxInfo = prePackageInfo.putArray("boxInfoList").addObject();
+        boxInfo.put("packageNo", 1);
+        boxInfo.put("partCount", 1);
+        boxInfo.put("boxType", "地盖");
+        boxInfo.put("boxType2", "0410");
+
+        ObjectNode partInfo = boxInfo.putArray("partInfoList").addObject();
+        partInfo.put("partCode", partCode);
+        partInfo.put("itemCode", "01E7-H0T");
+        partInfo.put("itemName", "单下横板（封边）");
+        partInfo.put("matName", "25mm云慕灰橡L零度木刺P6LOG-ENF-1220*2745mm-定制");
+        partInfo.put("layer", 2);
+        partInfo.put("piece", 1);
+        partInfo.put("sortOrder", 2);
+        partInfo.put("itemLength", 1500);
+        partInfo.put("itemWidth", 200);
+        partInfo.put("itemDepth", 25);
+        partInfo.put("xAxis", "0");
+        partInfo.put("yAxis", "0");
+        partInfo.put("zAxis", "25");
+        partInfo.put("rotate", 1);
+        partInfo.put("processCode", "ZN-25H");
+        partInfo.put("orderNumber", "Z-2");
+        partInfo.put("texture", "1");
+        partInfo.put("setNumber", 1001);
+        partInfo.put("containerNumber", 4);
+        partInfo.put("sealingFlatNoodles", "云慕灰橡PVC封边条1.2*29mm-定制");
+        partInfo.putNull("workmanship");
+        partInfo.putNull("groove");
+
+        ThirdPartyPrepackageResponseDTO response = objectMapper.treeToValue(root, ThirdPartyPrepackageResponseDTO.class);
+        PrepackageDataDTO mapped = new ThirdPartyPrepackageMapper()
+            .toPrepackageData(response, batchNum, workId);
+        PrepackageDataDTO.PartInfo mappedPart = mapped.getPrePackageInfo()
+            .getBoxInfoDetails().get(0)
+            .getPackageInfos().get(0)
+            .getPartInfos().get(0);
+
+        assertEquals("Z-2", mappedPart.getOrderNumber());
+        assertEquals("1", mappedPart.getTexture());
+        assertEquals("1001", mappedPart.getSetNumber());
+        assertEquals("4", mappedPart.getContainerNumber());
+        assertEquals("云慕灰橡PVC封边条1.2*29mm-定制", mappedPart.getSealingFlatNoodles());
+        assertTrue(mappedPart.getWorkmanship() == null);
+        assertTrue(mappedPart.getGroove() == null);
+
+        pushBatch(batchNum, workId);
+        Mockito.doReturn(mapped)
+            .when(thirdPartyMesClient)
+            .getPrepackageInfo(batchNum, workId);
+
+        prePackagePullTask.pullPrePackageData();
+
+        MesBoard saved = boardMapper.selectOne(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getBatchNum, batchNum)
+                .eq(MesBoard::getWorkId, workId)
+                .eq(MesBoard::getPartCode, partCode));
+        assertNotNull(saved);
+        assertEquals("Z-2", saved.getOrderNumber());
+        assertEquals("1", saved.getTexture());
+        assertEquals("1001", saved.getSetNumber());
+        assertEquals("4", saved.getContainerNumber());
+        assertEquals("云慕灰橡PVC封边条1.2*29mm-定制", saved.getSealingFlatNoodles());
+        assertTrue(saved.getWorkmanship() == null);
+        assertTrue(saved.getGroove() == null);
+    }
+
     private void insertEmailConfig(String toAddress) {
         jdbcTemplate.update(
             "INSERT INTO mes_email_notification_config " +
@@ -1020,8 +1109,10 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.successCount").value(1))
             .andExpect(jsonPath("$.failedCount").value(0))
             .andExpect(jsonPath("$.processingCount").value(0))
+            .andExpect(jsonPath("$.totalBoardCount").value(3))
             .andExpect(jsonPath("$.workOrders[0].workId").value(workId))
-            .andExpect(jsonPath("$.workOrders[0].status").value("PULLED"));
+            .andExpect(jsonPath("$.workOrders[0].status").value("PULLED"))
+            .andExpect(jsonPath("$.workOrders[0].boardCount").value(3));
 
         MesWorkOrder workOrder = getWorkOrder(batchNum, workId);
         assertEquals("PULLED", workOrder.getPrepackageStatus());
