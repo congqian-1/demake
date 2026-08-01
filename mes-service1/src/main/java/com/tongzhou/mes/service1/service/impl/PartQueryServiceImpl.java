@@ -42,6 +42,7 @@ import com.tongzhou.mes.service1.pojo.dto.hierarchy.ResultPrepackageHierarchy;
 import com.tongzhou.mes.service1.pojo.entity.*;
 import com.tongzhou.mes.service1.service.BatchPackagingQueryService;
 import com.tongzhou.mes.service1.service.PartQueryService;
+import com.tongzhou.mes.service1.service.PanelProcessSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -69,6 +70,7 @@ public class PartQueryServiceImpl implements PartQueryService {
     private final MesWorkReportMapper workReportMapper;
     private final BatchPackagingQueryService batchPackagingQueryService;
     private final ObjectMapper objectMapper;
+    private final PanelProcessSyncService panelProcessSyncService;
 
     /**
      * 检查工单状态
@@ -91,9 +93,24 @@ public class PartQueryServiceImpl implements PartQueryService {
                 .eq(MesBoard::getIsDeleted, 0)
         );
 
+        PanelProcessSyncService.SyncResult syncResult = null;
+
         if (board == null) {
-            log.warn("板件码 {} 不存在", partCode);
-            throw new PartNotFoundException(partCode);
+            // 本地没有该板件，尝试从 MES 反查批次并触发同步
+            log.info("板件码 {} 本地不存在，尝试从 MES 发现批次并同步", partCode);
+            syncResult = panelProcessSyncService.discoverAndSyncByPartCode(partCode);
+            if (syncResult != null) {
+                // 同步后重试查询
+                board = boardMapper.selectOne(
+                    new LambdaQueryWrapper<MesBoard>()
+                        .eq(MesBoard::getPartCode, partCode)
+                        .eq(MesBoard::getIsDeleted, 0)
+                );
+            }
+            if (board == null) {
+                log.warn("板件码 {} 不存在（MES 同步后仍未找到）", partCode);
+                throw new PartNotFoundException(partCode);
+            }
         }
 
         MesWorkOrder workOrder = resolveWorkOrder(board);
@@ -115,7 +132,25 @@ public class PartQueryServiceImpl implements PartQueryService {
             }
         }
 
+        // 同步面板工序数据（如果上面 discovery 已经触发过则跳过）
+        if (syncResult == null) {
+            syncResult = panelProcessSyncService.syncBatchProcessIfNeeded(batchNum);
+        }
         ResultBatchHierarchy response = new ResultBatchHierarchy();
+
+        // 将同步结果写入响应
+        if (syncResult != null) {
+            ResultBatchHierarchy.SyncInfo syncInfo = new ResultBatchHierarchy.SyncInfo();
+            syncInfo.setSuccess(syncResult.isSuccess());
+            syncInfo.setMessage(syncResult.getMessage());
+            syncInfo.setErrorDetail(syncResult.getErrorDetail());
+            syncInfo.setUpdatedBoardCount(syncResult.getUpdatedBoardCount());
+            response.setSync(syncInfo);
+
+            if (!syncResult.isSuccess() && !syncResult.isAlreadySynced()) {
+                log.warn("批次 {} 工序同步存在问题: {}", batchNum, syncResult.getMessage());
+            }
+        }
         response.setCode("0");
         response.setMessage("OK");
         response.setData(batchPackagingQueryService.getBatchHierarchy(batchNum));

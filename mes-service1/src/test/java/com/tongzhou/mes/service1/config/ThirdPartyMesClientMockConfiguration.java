@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tongzhou.mes.service1.client.ThirdPartyMesClient;
+import com.tongzhou.mes.service1.pojo.dto.BatchQueryResponseDTO;
 import com.tongzhou.mes.service1.pojo.dto.PrepackageDataDTO;
 import org.mockito.Mockito;
 import org.springframework.context.annotation.Bean;
@@ -15,6 +16,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Collections;
 
 /**
  * 测试环境下统一 mock 第三方MES客户端，避免真实网络调用。
@@ -40,6 +42,13 @@ public class ThirdPartyMesClientMockConfiguration {
                 String batchNum = invocation.getArgument(0);
                 String workId = invocation.getArgument(1);
                 return buildMockPrepackageData(batchNum, workId);
+            });
+
+        Mockito.when(mock.batchQueryProcess(Mockito.anyList()))
+            .thenAnswer(invocation -> {
+                @SuppressWarnings("unchecked")
+                java.util.List<String> barcodes = invocation.getArgument(0);
+                return buildMockBatchQueryResponse(barcodes);
             });
 
         return mock;
@@ -90,6 +99,34 @@ public class ThirdPartyMesClientMockConfiguration {
         }
 
         return objectMapper.convertValue(root, PrepackageDataDTO.class);
+    }
+
+    private BatchQueryResponseDTO buildMockBatchQueryResponse(java.util.List<String> barcodes) {
+        if (barcodes == null || barcodes.isEmpty()) {
+            return null;
+        }
+        BatchQueryResponseDTO response = new BatchQueryResponseDTO();
+        response.setCode(0);
+        response.setMsg("执行成功");
+        java.util.List<BatchQueryResponseDTO.BatchQueryItem> items = new java.util.ArrayList<>();
+        for (String barcode : barcodes) {
+            BatchQueryResponseDTO.BatchQueryItem item = new BatchQueryResponseDTO.BatchQueryItem();
+            item.setFtm(barcode);
+            // 从 barcode 推断批次号：格式 WD000658348B1015 → PCJH-260506-0087
+            if (barcode.startsWith("WD000658348")) {
+                item.setFpjh("PCJH-260506-0087");
+                item.setFgdh("WD000658348BBCP024");
+            } else {
+                item.setFpjh("PCJH-" + barcode.hashCode());
+                item.setFgdh("WO-" + barcode.hashCode());
+            }
+            item.setFgnym("DW020:包装");
+            item.setFsx(9);
+            item.setRn(1);
+            items.add(item);
+        }
+        response.setData(items);
+        return response;
     }
 
     private JsonNode loadMockTemplate(ObjectMapper mapper) {

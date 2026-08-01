@@ -286,3 +286,17 @@ CREATE TABLE IF NOT EXISTS mes_email_notification_config (
 );
 
 CREATE INDEX IF NOT EXISTS idx_is_deleted_email ON mes_email_notification_config (is_deleted);
+
+-- 看板工序同步记录表
+CREATE TABLE IF NOT EXISTS mes_panel_process_sync (
+    id           BIGINT       NOT NULL AUTO_INCREMENT,
+    batch_num    VARCHAR(100) NOT NULL,
+    work_id      VARCHAR(100) NOT NULL,
+    sync_result  VARCHAR(50)  DEFAULT NULL,
+    error_detail TEXT         DEFAULT NULL,
+    synced_at    TIMESTAMP    DEFAULT NULL,
+    created_time TIMESTAMP    DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uk_batch_work UNIQUE (batch_num, work_id)
+);
+CREATE INDEX IF NOT EXISTS idx_pps_batch_num ON mes_panel_process_sync (batch_num);
