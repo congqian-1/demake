@@ -86,6 +86,8 @@ public class PartDTO {
     private String setNumber;
     @Schema(description = "槽")
     private String groove;
+    @Schema(description = "初始简易批次号（FJYPH）")
+    private String fjYph;
     @Schema(description = "标准码原始JSON")
     private String standardList;
     @Schema(description = "真实打包包号", example = "PKG-REAL-001")

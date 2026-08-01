@@ -134,6 +134,8 @@ public class ThirdPartyPrepackageResponseDTO {
         private String setNumber;
         @JsonAlias({"Groove"})
         private String groove;
+        @JsonAlias({"FJYPH", "fjYph", "fj_yph"})
+        private String fjYph;
         private Integer condition;
 
         public void setWorkmanship(Object workmanship) {

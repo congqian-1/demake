@@ -322,6 +322,7 @@ public class PartQueryServiceImpl implements PartQueryService {
         response.setContainerNumber(board.getContainerNumber());
         response.setSetNumber(board.getSetNumber());
         response.setGroove(board.getGroove());
+        response.setFjYph(board.getFjYph());
         response.setRealPackageNo(board.getRealPackageNo());
         response.setIsDeleted(board.getIsDeleted());
         response.setCreatedTime(board.getCreatedTime());

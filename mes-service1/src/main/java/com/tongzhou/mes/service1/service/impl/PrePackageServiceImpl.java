@@ -574,6 +574,7 @@ public class PrePackageServiceImpl implements PrePackageService {
                                 board.setContainerNumber(partInfo.getContainerNumber());
                                 board.setSetNumber(partInfo.getSetNumber());
                                 board.setGroove(partInfo.getGroove());
+                                board.setFjYph(partInfo.getFjYph());
                                 board.setStandardList(partInfo.getStandardListJson());
                                 board.setIsDeleted(0);
                                 board.setUpdatedTime(LocalDateTime.now());

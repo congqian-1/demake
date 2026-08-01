@@ -179,6 +179,11 @@ public class MesBoard {
     private String groove;
 
     /**
+     * 初始简易批次号（FJYPH）
+     */
+    private String fjYph;
+
+    /**
      * 真实打包包号
      */
     private String realPackageNo;
