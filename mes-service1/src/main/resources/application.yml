@@ -68,6 +68,8 @@ mybatis-plus:
 
 # 第三方MES系统配置 (T006)
 mes:
+  # 看板工序同步功能开关（默认关闭，通过 -Dmes.panel.process.sync.enabled=true 开启）
+  # panel.process.sync.enabled: false
   third-party:
     base-url: ${MES_THIRD_PARTY_BASE_URL:http://10.30.70.4:8088/infc/any}  # 第三方MES接口地址
 

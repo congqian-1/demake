@@ -22,16 +22,20 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.tongzhou.mes.service1.converter.ThirdPartyPrepackageMapper;
 import com.tongzhou.mes.service1.pojo.dto.PrepackageDataDTO;
 import com.tongzhou.mes.service1.pojo.dto.ThirdPartyPrepackageResponseDTO;
+import com.tongzhou.mes.service1.pojo.dto.BatchQueryResponseDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.ConnectionPool;
 import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
+import org.springframework.retry.annotation.Recover;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
@@ -55,6 +59,7 @@ public class ThirdPartyMesClient {
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
+            .connectionPool(new ConnectionPool(20, 5, TimeUnit.MINUTES))
             .build();
 
     private final ThreadLocal<LastCall> lastCallHolder = new ThreadLocal<>();
@@ -142,6 +147,90 @@ public class ThirdPartyMesClient {
         }
         ThirdPartyPrepackageResponseDTO dto = objectMapper.treeToValue(root, ThirdPartyPrepackageResponseDTO.class);
         return prepackageMapper.toPrepackageData(dto, batchNum, workId);
+    }
+
+
+    /**
+     * 批量查询板件工序信息（batchQuery）
+     *
+     * @param barcodes 板件码列表
+     * @return 板件工序查询结果，调用失败时返回 null
+     */
+    @Retryable(
+            value = {IOException.class},
+            maxAttempts = 2,
+            backoff = @Backoff(delay = 1000)
+    )
+    public BatchQueryResponseDTO batchQueryProcess(List<String> barcodes) throws IOException {
+        String url = baseUrl;
+        String barcodeStr = String.join("','", barcodes);
+
+        java.util.Map<String, Object> serviceMap = new java.util.LinkedHashMap<>();
+        serviceMap.put("name", "batchQuery");
+
+        java.util.Map<String, Object> payloadMap = new java.util.LinkedHashMap<>();
+        payloadMap.put("barcode", barcodeStr);
+
+        java.util.Map<String, Object> requestBodyMap = new java.util.LinkedHashMap<>();
+        requestBodyMap.put("service", serviceMap);
+        requestBodyMap.put("payload", payloadMap);
+
+        String requestBody = objectMapper.writeValueAsString(requestBodyMap);
+
+        LastCall lastCall = new LastCall();
+        lastCall.url = url;
+        lastCall.requestBody = requestBody;
+        lastCallHolder.set(lastCall);
+
+        okhttp3.RequestBody body = okhttp3.RequestBody.create(
+                requestBody,
+                okhttp3.MediaType.parse("application/json")
+        );
+
+        Request request = new Request.Builder()
+                .url(url)
+                .post(body)
+                .addHeader("Content-Type", "application/json")
+                .build();
+
+        log.info("调用MES batchQuery接口，板件数量: {}, 入参: {}", barcodes.size(), requestBody);
+
+        try (Response response = okHttpClient.newCall(request).execute()) {
+            lastCall.httpStatus = response.code();
+            String responseBody = response.body() != null ? response.body().string() : null;
+            lastCall.responseBody = responseBody;
+
+            if (!response.isSuccessful()) {
+                log.error("MES batchQuery接口返回非200状态: {}, 板件数量: {}, 入参: {}",
+                        response.code(), barcodes.size(), requestBody);
+                throw new IOException("Unexpected response code: " + response.code());
+            }
+
+            if (responseBody == null) {
+                log.error("MES batchQuery接口返回空body，板件数量: {}", barcodes.size());
+                throw new IOException("Empty response body");
+            }
+
+            BatchQueryResponseDTO result = objectMapper.readValue(
+                    responseBody, BatchQueryResponseDTO.class);
+            log.info("MES batchQuery接口调用成功，返回数据条数: {}, 出参: {}",
+                    result.getData() != null ? result.getData().size() : 0, responseBody);
+            return result;
+        } catch (IOException e) {
+            lastCall.errorMessage = e.getMessage();
+            throw e;
+        }
+    }
+
+    /**
+     * batchQueryProcess 重试耗尽后的降级处理，返回 null。
+     */
+    @Recover
+    public BatchQueryResponseDTO recoverBatchQueryProcess(IOException e,
+                                                           List<String> barcodes) {
+        log.error("MES batchQuery接口重试耗尽，板件数量: {}, 错误: {}",
+                barcodes != null ? barcodes.size() : 0, e.getMessage());
+        return null;
     }
 
     public LastCallSnapshot getLastCallSnapshot() {

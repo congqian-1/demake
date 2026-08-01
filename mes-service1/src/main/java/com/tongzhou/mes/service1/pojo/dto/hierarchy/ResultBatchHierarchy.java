@@ -32,4 +32,19 @@ public class ResultBatchHierarchy {
     private String message;
     @Schema(description = "批次层级数据")
     private BatchHierarchy data;
+    @Schema(description = "面板工序同步结果")
+    private SyncInfo sync;
+
+    @Data
+    @Schema(description = "面板工序同步信息")
+    public static class SyncInfo {
+        @Schema(description = "是否同步成功")
+        private boolean success;
+        @Schema(description = "同步结果消息")
+        private String message;
+        @Schema(description = "错误详情（成功时为空）")
+        private String errorDetail;
+        @Schema(description = "更新的板件数量")
+        private int updatedBoardCount;
+    }
 }
