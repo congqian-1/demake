@@ -60,6 +60,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PartQueryServiceImpl implements PartQueryService {
 
+    private static final int MAX_CLIENT_SYNC_ERROR_DETAIL_LENGTH = 200;
+
     private final MesBoardMapper boardMapper;
     private final MesWorkOrderMapper workOrderMapper;
     private final MesBatchMapper batchMapper;
@@ -148,7 +150,7 @@ public class PartQueryServiceImpl implements PartQueryService {
             ResultBatchHierarchy.SyncInfo syncInfo = new ResultBatchHierarchy.SyncInfo();
             syncInfo.setSuccess(syncResult.isSuccess());
             syncInfo.setMessage(syncResult.getMessage());
-            syncInfo.setErrorDetail(syncResult.getErrorDetail());
+            syncInfo.setErrorDetail(toClientSyncErrorDetail(syncResult));
             syncInfo.setUpdatedBoardCount(syncResult.getUpdatedBoardCount());
             response.setSync(syncInfo);
 
@@ -280,6 +282,21 @@ public class PartQueryServiceImpl implements PartQueryService {
         log.info("查询板件码 {} 的详细信息成功", partCode);
 
         return response;
+    }
+
+    private String toClientSyncErrorDetail(PanelProcessSyncService.SyncResult syncResult) {
+        if (syncResult == null || syncResult.isSuccess() || syncResult.isAlreadySynced()) {
+            return null;
+        }
+        String errorDetail = syncResult.getErrorDetail();
+        if (errorDetail == null || errorDetail.trim().isEmpty()) {
+            return "同步失败，完整失败明细请查看服务日志或同步记录";
+        }
+        if (errorDetail.length() <= MAX_CLIENT_SYNC_ERROR_DETAIL_LENGTH) {
+            return errorDetail;
+        }
+        return errorDetail.substring(0, MAX_CLIENT_SYNC_ERROR_DETAIL_LENGTH)
+            + "...（已截断，完整失败明细请查看服务日志或同步记录）";
     }
 
     private MesBoard findActiveBoard(String partCode) {

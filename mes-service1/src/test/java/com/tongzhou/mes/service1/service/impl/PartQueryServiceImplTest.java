@@ -42,6 +42,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
@@ -119,6 +120,32 @@ class PartQueryServiceImplTest {
         verify(panelProcessSyncService).discoverAndResyncByPartCode(PART_CODE);
         verify(panelProcessSyncService, never()).discoverAndSyncByPartCode(anyString());
         verify(panelProcessSyncService, never()).syncBatchProcessIfNeeded(anyString());
+    }
+
+    @Test
+    @DisplayName("queryWorkOrderAndBatch: 同步失败详情返回给前端时截断")
+    void shouldTruncateSyncErrorDetailForClient() {
+        MesBoard board = buildBoard();
+        MesWorkOrder workOrder = buildWorkOrder("PULLED");
+        BatchHierarchy hierarchy = new BatchHierarchy();
+        StringBuilder detail = new StringBuilder();
+        for (int i = 0; i < 20; i++) {
+            detail.append("工单 WO-").append(i).append(": 第三方接口返回空数据; ");
+        }
+        PanelProcessSyncService.SyncResult syncResult =
+                PanelProcessSyncService.SyncResult.partialFailure("部分失败：成功 1/20 个工单",
+                        detail.toString(), 3);
+
+        when(boardMapper.selectOne(anyBoardWrapper())).thenReturn(board, board);
+        when(workOrderMapper.selectByBatchNumAndWorkId(BATCH_NUM, WORK_ID)).thenReturn(workOrder, workOrder);
+        when(panelProcessSyncService.resyncBatchProcess(BATCH_NUM)).thenReturn(syncResult);
+        when(batchPackagingQueryService.getBatchHierarchy(BATCH_NUM)).thenReturn(hierarchy);
+
+        ResultBatchHierarchy result = service.queryWorkOrderAndBatch(PART_CODE);
+
+        assertNotNull(result.getSync());
+        assertTrue(result.getSync().getErrorDetail().length() < detail.length());
+        assertTrue(result.getSync().getErrorDetail().contains("已截断"));
     }
 
     private MesBoard buildBoard() {
