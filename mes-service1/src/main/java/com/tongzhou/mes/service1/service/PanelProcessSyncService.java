@@ -34,6 +34,14 @@ public interface PanelProcessSyncService {
     SyncResult syncBatchProcessIfNeeded(String batchNum);
 
     /**
+     * 若批次未由查询接口同步过，则按原保存逻辑重新拉取一次。
+     *
+     * @param batchNum 批次号
+     * @return 同步结果
+     */
+    SyncResult resyncBatchProcess(String batchNum);
+
+    /**
      * 根据板件码从 MES 发现批次号并触发全批次同步。
      * 用于本地没有该板件时，通过 MES batchQuery 反查批次后自动拉取数据。
      *
@@ -41,6 +49,14 @@ public interface PanelProcessSyncService {
      * @return 同步结果，MES 查不到或同步未触发时返回 null
      */
     SyncResult discoverAndSyncByPartCode(String partCode);
+
+    /**
+     * 根据板件码从 MES 发现批次号；若批次未由查询接口同步过，则按原保存逻辑重新拉取一次。
+     *
+     * @param partCode 板件码
+     * @return 同步结果，MES 查不到或同步未触发时返回 null
+     */
+    SyncResult discoverAndResyncByPartCode(String partCode);
 
     /**
      * 同步结果。

@@ -87,28 +87,40 @@ public class PartQueryServiceImpl implements PartQueryService {
     public ResultBatchHierarchy queryWorkOrderAndBatch(String partCode) {
         log.info("开始查询板件码 {} 的批次层级信息", partCode);
 
-        MesBoard board = boardMapper.selectOne(
-            new LambdaQueryWrapper<MesBoard>()
-                .eq(MesBoard::getPartCode, partCode)
-                .eq(MesBoard::getIsDeleted, 0)
-        );
-
+        MesBoard board = findActiveBoard(partCode);
         PanelProcessSyncService.SyncResult syncResult = null;
 
         if (board == null) {
-            // 本地没有该板件，尝试从 MES 反查批次并触发同步
-            log.info("板件码 {} 本地不存在，尝试从 MES 发现批次并同步", partCode);
-            syncResult = panelProcessSyncService.discoverAndSyncByPartCode(partCode);
-            if (syncResult != null) {
-                // 同步后重试查询
-                board = boardMapper.selectOne(
-                    new LambdaQueryWrapper<MesBoard>()
-                        .eq(MesBoard::getPartCode, partCode)
-                        .eq(MesBoard::getIsDeleted, 0)
-                );
-            }
+            // 本地没有该板件，尝试从 MES 反查批次并按原批次拉取流程重新执行一次。
+            log.info("板件码 {} 本地不存在，尝试从 MES 发现批次并按原逻辑重新拉取", partCode);
+            syncResult = panelProcessSyncService.discoverAndResyncByPartCode(partCode);
+            board = findActiveBoard(partCode);
             if (board == null) {
-                log.warn("板件码 {} 不存在（MES 同步后仍未找到）", partCode);
+                log.warn("板件码 {} 不存在（MES 接口同步处理后仍未找到）", partCode);
+                throw new PartNotFoundException(partCode);
+            }
+        } else {
+            MesWorkOrder workOrder = resolveWorkOrder(board);
+            if (workOrder == null) {
+                log.error("板件码 {} 关联的工单不存在，workId: {}", partCode, board.getWorkId());
+                throw new RuntimeException("板件关联的工单不存在");
+            }
+
+            if ("UPDATING".equals(workOrder.getPrepackageStatus())) {
+                log.warn("工单 {} 数据正在更新中，拒绝查询", workOrder.getWorkId());
+                throw new WorkOrderUpdatingException(workOrder.getWorkId());
+            }
+
+            String batchNum = resolveBatchNum(board, workOrder);
+            if (batchNum == null || batchNum.trim().isEmpty()) {
+                log.error("板件码 {} 关联的批次号为空，workId: {}", partCode, board.getWorkId());
+                throw new RuntimeException("板件关联的批次号为空");
+            }
+            log.info("板件码 {} 本地已存在，批次 {} 若未由接口同步过则按原逻辑重新拉取后再查询", partCode, batchNum);
+            syncResult = panelProcessSyncService.resyncBatchProcess(batchNum);
+            board = findActiveBoard(partCode);
+            if (board == null) {
+                log.warn("板件码 {} 在批次接口同步处理后已不存在", partCode);
                 throw new PartNotFoundException(partCode);
             }
         }
@@ -124,17 +136,10 @@ public class PartQueryServiceImpl implements PartQueryService {
             throw new WorkOrderUpdatingException(workOrder.getWorkId());
         }
 
-        String batchNum = board.getBatchNum();
+        String batchNum = resolveBatchNum(board, workOrder);
         if (batchNum == null || batchNum.trim().isEmpty()) {
-            MesBatch batch = batchMapper.selectById(workOrder.getBatchId());
-            if (batch != null) {
-                batchNum = batch.getBatchNum();
-            }
-        }
-
-        // 同步面板工序数据（如果上面 discovery 已经触发过则跳过）
-        if (syncResult == null) {
-            syncResult = panelProcessSyncService.syncBatchProcessIfNeeded(batchNum);
+            log.error("板件码 {} 关联的批次号为空，workId: {}", partCode, board.getWorkId());
+            throw new RuntimeException("板件关联的批次号为空");
         }
         ResultBatchHierarchy response = new ResultBatchHierarchy();
 
@@ -148,7 +153,8 @@ public class PartQueryServiceImpl implements PartQueryService {
             response.setSync(syncInfo);
 
             if (!syncResult.isSuccess() && !syncResult.isAlreadySynced()) {
-                log.warn("批次 {} 工序同步存在问题: {}", batchNum, syncResult.getMessage());
+                log.warn("批次 {} 工序接口同步存在问题: {}，失败明细: {}",
+                    batchNum, syncResult.getMessage(), syncResult.getErrorDetail());
             }
         }
         response.setCode("0");
@@ -274,6 +280,30 @@ public class PartQueryServiceImpl implements PartQueryService {
         log.info("查询板件码 {} 的详细信息成功", partCode);
 
         return response;
+    }
+
+    private MesBoard findActiveBoard(String partCode) {
+        return boardMapper.selectOne(
+            new LambdaQueryWrapper<MesBoard>()
+                .eq(MesBoard::getPartCode, partCode)
+                .eq(MesBoard::getIsDeleted, 0)
+        );
+    }
+
+    private String resolveBatchNum(MesBoard board, MesWorkOrder workOrder) {
+        if (board.getBatchNum() != null && !board.getBatchNum().trim().isEmpty()) {
+            return board.getBatchNum();
+        }
+        if (workOrder != null && workOrder.getBatchNum() != null && !workOrder.getBatchNum().trim().isEmpty()) {
+            return workOrder.getBatchNum();
+        }
+        if (workOrder != null && workOrder.getBatchId() != null) {
+            MesBatch batch = batchMapper.selectById(workOrder.getBatchId());
+            if (batch != null) {
+                return batch.getBatchNum();
+            }
+        }
+        return null;
     }
 
     private MesWorkOrder resolveWorkOrder(MesBoard board) {

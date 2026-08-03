@@ -113,14 +113,12 @@ class PanelProcessSyncServiceImplTest {
 
             assertTrue(result.isAlreadySynced());
             assertTrue(result.isSuccess());
-            verify(panelProcessSyncMapper).countByBatchNum(BATCH_NUM);
             verify(panelProcessSyncMapper, never()).insert(any(com.tongzhou.mes.service1.pojo.entity.MesPanelProcessSync.class));
         }
 
         @Test
         @DisplayName("批次下没有工单时返回 success(0)")
         void shouldReturnSuccessWhenNoWorkOrders() {
-            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(0);
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(Collections.emptyList());
 
             SyncResult result = service.syncBatchProcessIfNeeded(BATCH_NUM);
@@ -135,7 +133,6 @@ class PanelProcessSyncServiceImplTest {
         @DisplayName("全部工单同步成功")
         void shouldReturnSuccessWhenAllWorkOrdersSucceed() {
             List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1, WORK_ID_2);
-            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(0);
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
 
             SyncPullResult pullResult1 = buildPullResult(WORK_ID_1, "PULLED", 10);
@@ -161,7 +158,6 @@ class PanelProcessSyncServiceImplTest {
         @DisplayName("部分工单失败返回 partialFailure")
         void shouldReturnPartialFailureWhenSomeFail() {
             List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1, WORK_ID_2);
-            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(0);
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
 
             SyncPullResult pullResult1 = buildPullResult(WORK_ID_1, "PULLED", 10);
@@ -184,7 +180,6 @@ class PanelProcessSyncServiceImplTest {
         @DisplayName("全部工单失败返回 failure")
         void shouldReturnFailureWhenAllFail() {
             List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1, WORK_ID_2);
-            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(0);
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
 
             SyncPullResult pullResult1 = buildPullResult(WORK_ID_1, "FAILED", 0, "ERR-001", "网络错误");
@@ -204,7 +199,6 @@ class PanelProcessSyncServiceImplTest {
         @DisplayName("工单正在处理中(PROCESSING)视为成功")
         void shouldTreatProcessingAsSuccess() {
             List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1);
-            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(0);
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
 
             SyncPullResult pullResult = buildPullResult(WORK_ID_1, "PROCESSING", 0);
@@ -222,7 +216,6 @@ class PanelProcessSyncServiceImplTest {
         @DisplayName("pullSingleWorkOrderForSync 抛异常时记录失败")
         void shouldRecordFailureWhenExceptionThrown() {
             List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1);
-            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(0);
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
             when(prePackageService.pullSingleWorkOrderForSync(BATCH_NUM, WORK_ID_1))
                     .thenThrow(new RuntimeException("意外异常"));
@@ -239,7 +232,6 @@ class PanelProcessSyncServiceImplTest {
         @DisplayName("并发插入时唯一键冲突仍正常处理")
         void shouldHandleDuplicateInsertGracefully() {
             List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1);
-            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(0);
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
             when(panelProcessSyncMapper.insert(any(com.tongzhou.mes.service1.pojo.entity.MesPanelProcessSync.class)))
                     .thenThrow(new org.springframework.dao.DuplicateKeyException("dup"));
@@ -250,6 +242,49 @@ class PanelProcessSyncServiceImplTest {
 
             assertTrue(result.isSuccess());
             assertEquals(3, result.getUpdatedBoardCount());
+        }
+
+        @Test
+        @DisplayName("未由接口同步过的批次，由查询线程独占拉取")
+        void shouldResyncByResettingThenUsingOriginalSyncFlow() {
+            List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1);
+            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(0);
+            when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
+            when(prePackageService.repullSingleWorkOrderForSync(BATCH_NUM, WORK_ID_1))
+                    .thenReturn(buildPullResult(WORK_ID_1, "PULLED", 7));
+
+            SyncResult result = service.resyncBatchProcess(BATCH_NUM);
+
+            assertTrue(result.isSuccess());
+            assertEquals(7, result.getUpdatedBoardCount());
+            verify(panelProcessSyncMapper).countByBatchNum(BATCH_NUM);
+            verify(prePackageService).repullSingleWorkOrderForSync(BATCH_NUM, WORK_ID_1);
+        }
+
+        @Test
+        @DisplayName("失败结果缺少错误信息时从工单表补充原因")
+        void shouldFillFailureDetailFromWorkOrderWhenMissingMessage() {
+            List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1);
+            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(0);
+            when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
+            when(prePackageService.repullSingleWorkOrderForSync(BATCH_NUM, WORK_ID_1))
+                    .thenReturn(buildPullResult(WORK_ID_1, "FAILED", 0));
+
+            MesWorkOrder latest = new MesWorkOrder();
+            latest.setBatchNum(BATCH_NUM);
+            latest.setWorkId(WORK_ID_1);
+            latest.setPrepackageStatus("FAILED");
+            latest.setRetryCount(3);
+            latest.setErrorMessage("第三方接口返回空数据");
+            when(workOrderMapper.selectByBatchNumAndWorkId(BATCH_NUM, WORK_ID_1)).thenReturn(latest);
+
+            SyncResult result = service.resyncBatchProcess(BATCH_NUM);
+
+            assertFalse(result.isSuccess());
+            assertTrue(result.getErrorDetail().contains("status=FAILED"));
+            assertTrue(result.getErrorDetail().contains("第三方接口返回空数据"));
+            verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID_1),
+                    eq("FAILED"), contains("第三方接口返回空数据"));
         }
     }
 
@@ -280,13 +315,27 @@ class PanelProcessSyncServiceImplTest {
         void shouldReturnSyncResultWhenMesReturnsBatch() throws IOException {
             BatchQueryResponseDTO response = buildBatchQueryResponse(PART_CODE, BATCH_NUM);
             when(thirdPartyMesClient.batchQueryProcess(anyList())).thenReturn(response);
-            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(0);
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(Collections.emptyList());
 
             SyncResult result = service.discoverAndSyncByPartCode(PART_CODE);
 
             assertNotNull(result);
             assertTrue(result.isSuccess());
+        }
+
+        @Test
+        @DisplayName("重拉发现批次时按接口同步去重触发原保存逻辑")
+        void shouldResyncWhenMesReturnsBatch() throws IOException {
+            BatchQueryResponseDTO response = buildBatchQueryResponse(PART_CODE, BATCH_NUM);
+            when(thirdPartyMesClient.batchQueryProcess(anyList())).thenReturn(response);
+            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(0);
+            when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(Collections.emptyList());
+
+            SyncResult result = service.discoverAndResyncByPartCode(PART_CODE);
+
+            assertNotNull(result);
+            assertTrue(result.isSuccess());
+            verify(panelProcessSyncMapper).countByBatchNum(BATCH_NUM);
         }
 
         @Test
