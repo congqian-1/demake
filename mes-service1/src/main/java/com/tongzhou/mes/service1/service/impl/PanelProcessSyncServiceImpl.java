@@ -52,6 +52,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequiredArgsConstructor
 public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
 
+    private static final int SYNC_CORE_POOL_SIZE = 2;
+    private static final int SYNC_MAX_POOL_SIZE = 4;
+
     private final MesWorkOrderMapper workOrderMapper;
     private final ThirdPartyMesClient thirdPartyMesClient;
     private final MesPanelProcessSyncMapper panelProcessSyncMapper;
@@ -62,11 +65,12 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
 
     /**
      * 同步专用线程池，并行调用 pullSingleWorkOrderForSync 以提升大批次性能。
+     * 并发控制在 2~4，避免同批次大量工单同时覆盖写库引发死锁。
      * 调用方通过 CompletableFuture.allOf().join() 阻塞等待全部完成，
      * 对外表现为同步执行。
      */
     private final ExecutorService syncExecutor = new ThreadPoolExecutor(
-            4, 8, 60L, TimeUnit.SECONDS,
+            SYNC_CORE_POOL_SIZE, SYNC_MAX_POOL_SIZE, 60L, TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(200),
             r -> {
                 Thread t = new Thread(r, "panel-process-sync-");
