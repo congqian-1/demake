@@ -182,6 +182,7 @@ public class ThirdPartyPrepackageMapper {
             dto.setContainerNumber(part.getContainerNumber());
             dto.setSetNumber(part.getSetNumber());
             dto.setGroove(part.getGroove());
+            dto.setFjYph(part.getFjYph());
             dto.setStandardListJson(null);
             parts.add(dto);
         }

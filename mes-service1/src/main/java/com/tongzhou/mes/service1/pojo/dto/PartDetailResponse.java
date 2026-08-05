@@ -120,6 +120,8 @@ public class PartDetailResponse {
     @Schema(description = "槽")
     private String groove;
 
+    private String fjYph;
+
     @Schema(description = "标准码列表（解析后的Map列表）")
     private List<Map<String, Integer>> standardList;
 

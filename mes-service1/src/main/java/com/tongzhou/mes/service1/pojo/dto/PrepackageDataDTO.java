@@ -274,6 +274,7 @@ public class PrepackageDataDTO {
         @JsonProperty("Groove")
         @JsonAlias({"groove"})
         private String groove; // 槽
+        private String fjYph;
 
         @JsonProperty("StandardList")
         private String standardListJson; // 标准码集合（JSON格式）

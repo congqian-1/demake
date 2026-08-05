@@ -29,6 +29,8 @@ import com.tongzhou.mes.service1.service.EmailNotificationService;
 import com.tongzhou.mes.service1.service.PrePackageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 预包装服务实现类
@@ -62,6 +66,14 @@ public class PrePackageServiceImpl implements PrePackageService {
     private static final int MAX_BATCH_SIZE = 50;
     private static final int MAX_RETRY_COUNT = 3;
     private static final long[] RETRY_DELAYS = {1000, 2000, 4000}; // 1s, 2s, 4s
+    private static final int MAX_PARALLEL_OVERWRITE_SAVES = 2;
+    private static final int SAVE_DEADLOCK_MAX_ATTEMPTS = 3;
+    private static final long[] SAVE_DEADLOCK_RETRY_DELAYS = {100, 300};
+
+    @Value("${mes.prepackage.overwrite-save-permit-timeout-seconds:60}")
+    private long overwriteSavePermitTimeoutSeconds = 60L;
+
+    private final Semaphore overwriteSaveSemaphore = new Semaphore(MAX_PARALLEL_OVERWRITE_SAVES);
 
     @Override
     public void pullPendingWorkOrders() {
@@ -118,6 +130,43 @@ public class PrePackageServiceImpl implements PrePackageService {
         } catch (Exception e) {
             // 异常已在内部落库并记录，最终以数据库状态回传
             log.warn("同步拉取执行异常，工单号: {}, 错误: {}", workId, e.getMessage());
+        }
+
+        MesWorkOrder latest = workOrderMapper.selectById(workOrder.getId());
+        result.setStatus(latest != null ? latest.getPrepackageStatus() : "FAILED");
+        result.setErrorMessage(latest != null ? latest.getErrorMessage() : "未知错误");
+        result.setBoardCount(countActiveBoards(batchNum, workId));
+        return result;
+    }
+
+    @Override
+    public SyncPullResult repullSingleWorkOrderForSync(String batchNum, String workId) {
+        SyncPullResult result = new SyncPullResult();
+        result.setWorkId(workId);
+
+        MesWorkOrder workOrder = workOrderMapper.selectByBatchNumAndWorkId(batchNum, workId);
+        if (workOrder == null) {
+            result.setStatus("FAILED");
+            result.setErrorCode("WORK_ORDER_NOT_FOUND");
+            result.setErrorMessage("工单不存在：该批次下未找到工单");
+            result.setBoardCount(0);
+            return result;
+        }
+
+        if (!tryAcquireWorkOrderForResync(workOrder.getId())) {
+            MesWorkOrder latest = workOrderMapper.selectById(workOrder.getId());
+            String status = latest != null ? latest.getPrepackageStatus() : "PROCESSING";
+            result.setStatus("UPDATING".equals(status) ? "PROCESSING" : status);
+            result.setErrorMessage(latest != null ? latest.getErrorMessage() : null);
+            result.setBoardCount(countActiveBoards(batchNum, workId));
+            return result;
+        }
+
+        try {
+            executeOwnedPull(workOrder, true);
+        } catch (Exception e) {
+            // 异常已在内部落库并记录，最终以数据库状态回传。
+            log.warn("查询触发重拉执行异常，工单号: {}, 错误: {}", workId, e.getMessage());
         }
 
         MesWorkOrder latest = workOrderMapper.selectById(workOrder.getId());
@@ -271,7 +320,80 @@ public class PrePackageServiceImpl implements PrePackageService {
     }
 
     private void savePrePackageDataWithOverwriteInNewTransaction(MesWorkOrder workOrder, PrepackageDataDTO data) {
-        prePackageOverwriteTxService.execute(() -> savePrePackageDataWithOverwrite(workOrder, data));
+        for (int attempt = 1; attempt <= SAVE_DEADLOCK_MAX_ATTEMPTS; attempt++) {
+            boolean acquired = false;
+            try {
+                acquired = overwriteSaveSemaphore.tryAcquire(overwriteSavePermitTimeoutSeconds, TimeUnit.SECONDS);
+                if (!acquired) {
+                    throw new RuntimeException("覆盖保存等待并发槽位超时，工单号: " + workOrder.getWorkId()
+                        + ", timeoutSeconds=" + overwriteSavePermitTimeoutSeconds);
+                }
+                prePackageOverwriteTxService.execute(() -> savePrePackageDataWithOverwrite(workOrder, data));
+                if (attempt > 1) {
+                    log.info("预包装数据覆盖保存死锁重试成功，工单号: {}, 尝试次数: {}", workOrder.getWorkId(), attempt);
+                }
+                return;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("覆盖保存等待并发槽位被中断，工单号: " + workOrder.getWorkId(), e);
+            } catch (RuntimeException e) {
+                if (!isDeadlock(e) || attempt >= SAVE_DEADLOCK_MAX_ATTEMPTS) {
+                    throw e;
+                }
+                if (acquired) {
+                    overwriteSaveSemaphore.release();
+                    acquired = false;
+                }
+                long delayMs = SAVE_DEADLOCK_RETRY_DELAYS[attempt - 1];
+                log.warn("预包装数据覆盖保存遇到数据库死锁，工单号: {}, 第 {}/{} 次失败，{}ms 后重试，原因: {}",
+                    workOrder.getWorkId(), attempt, SAVE_DEADLOCK_MAX_ATTEMPTS, delayMs, rootCauseMessage(e));
+                sleepBeforeSaveRetry(delayMs, workOrder.getWorkId());
+            } finally {
+                if (acquired) {
+                    overwriteSaveSemaphore.release();
+                }
+            }
+        }
+    }
+
+    private void sleepBeforeSaveRetry(long delayMs, String workId) {
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("覆盖保存死锁重试等待被中断，工单号: " + workId, e);
+        }
+    }
+
+    private boolean isDeadlock(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof DeadlockLoserDataAccessException) {
+                return true;
+            }
+            String className = current.getClass().getName();
+            if (className.contains("MySQLTransactionRollbackException")
+                    || className.contains("SQLTransactionRollbackException")) {
+                return true;
+            }
+            String message = current.getMessage();
+            if (message != null && (message.contains("Deadlock found")
+                    || message.contains("try restarting transaction"))) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private String rootCauseMessage(Throwable throwable) {
+        Throwable current = throwable;
+        Throwable root = throwable;
+        while (current != null) {
+            root = current;
+            current = current.getCause();
+        }
+        return root.getMessage() != null ? root.getMessage() : root.getClass().getSimpleName();
     }
 
     private boolean tryAcquireWorkOrder(Long workOrderId) {
@@ -281,6 +403,19 @@ public class PrePackageServiceImpl implements PrePackageService {
             .set(MesWorkOrder::getReprocessPending, 0)
             .eq(MesWorkOrder::getId, workOrderId)
             .eq(MesWorkOrder::getPrepackageStatus, "NOT_PULLED")
+            .eq(MesWorkOrder::getIsDeleted, 0));
+        return updated > 0;
+    }
+
+    private boolean tryAcquireWorkOrderForResync(Long workOrderId) {
+        int updated = workOrderMapper.update(null, new LambdaUpdateWrapper<MesWorkOrder>()
+            .set(MesWorkOrder::getPrepackageStatus, "UPDATING")
+            .set(MesWorkOrder::getLastPullTime, LocalDateTime.now())
+            .set(MesWorkOrder::getRetryCount, 0)
+            .set(MesWorkOrder::getErrorMessage, null)
+            .set(MesWorkOrder::getReprocessPending, 0)
+            .eq(MesWorkOrder::getId, workOrderId)
+            .ne(MesWorkOrder::getPrepackageStatus, "UPDATING")
             .eq(MesWorkOrder::getIsDeleted, 0));
         return updated > 0;
     }
@@ -353,8 +488,8 @@ public class PrePackageServiceImpl implements PrePackageService {
             snapshot.getUrl(),
             snapshot.getHttpStatus(),
             snapshot.getErrorMessage(),
-            truncate(snapshot.getRequestBody()),
-            truncate(snapshot.getResponseBody())
+            snapshot.getRequestBody(),
+            snapshot.getResponseBody()
         );
     }
 
@@ -574,6 +709,7 @@ public class PrePackageServiceImpl implements PrePackageService {
                                 board.setContainerNumber(partInfo.getContainerNumber());
                                 board.setSetNumber(partInfo.getSetNumber());
                                 board.setGroove(partInfo.getGroove());
+                                board.setFjYph(partInfo.getFjYph());
                                 board.setStandardList(partInfo.getStandardListJson());
                                 board.setIsDeleted(0);
                                 board.setUpdatedTime(LocalDateTime.now());

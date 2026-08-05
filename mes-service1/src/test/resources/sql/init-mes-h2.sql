@@ -300,3 +300,4 @@ CREATE TABLE IF NOT EXISTS mes_panel_process_sync (
     CONSTRAINT uk_batch_work UNIQUE (batch_num, work_id)
 );
 CREATE INDEX IF NOT EXISTS idx_pps_batch_num ON mes_panel_process_sync (batch_num);
+ALTER TABLE mes_part ADD COLUMN fj_yph VARCHAR(100) DEFAULT NULL COMMENT '初始简易批次号（FJYPH）' AFTER groove;

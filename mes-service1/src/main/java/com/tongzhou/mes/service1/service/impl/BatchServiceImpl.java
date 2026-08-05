@@ -31,6 +31,7 @@ import com.tongzhou.mes.service1.pojo.entity.MesWorkOrder;
 import com.tongzhou.mes.service1.service.BatchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,19 +53,42 @@ public class BatchServiceImpl implements BatchService {
     private final MesOptimizationFileMapper optimizationFileMapper;
     private final MesWorkOrderMapper workOrderMapper;
     private final BatchConverter batchConverter;
+    private final BatchSaveTxService batchSaveTxService;
+
+    private static final int SAVE_DEADLOCK_MAX_ATTEMPTS = 3;
+    private static final long[] SAVE_DEADLOCK_RETRY_DELAYS = {100L, 300L};
 
     /**
      * 保存批次数据：同批次内支持增量补推，重复组合只重置状态不新增记录。
      */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public String saveBatch(BatchPushRequest request) {
         return saveBatchWithResult(request).getBatchNum();
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public BatchSaveResult saveBatchWithResult(BatchPushRequest request) {
+        return saveBatchWithDeadlockRetry(request);
+    }
+
+    private BatchSaveResult saveBatchWithDeadlockRetry(BatchPushRequest request) {
+        for (int attempt = 1; attempt <= SAVE_DEADLOCK_MAX_ATTEMPTS; attempt++) {
+            try {
+                return batchSaveTxService.execute(() -> saveBatchInternal(request));
+            } catch (RuntimeException e) {
+                if (!isDeadlock(e) || attempt >= SAVE_DEADLOCK_MAX_ATTEMPTS) {
+                    throw e;
+                }
+                long delayMs = SAVE_DEADLOCK_RETRY_DELAYS[attempt - 1];
+                log.warn("批次推送保存遇到数据库死锁，第 {}/{} 次失败，{}ms 后重试，批次号: {}, 原因: {}",
+                    attempt, SAVE_DEADLOCK_MAX_ATTEMPTS, delayMs, request.getBatchNum(), rootCauseMessage(e));
+                sleepBeforeSaveRetry(delayMs, request.getBatchNum());
+            }
+        }
+        throw new IllegalStateException("批次推送保存重试逻辑异常，批次号: " + request.getBatchNum());
+    }
+
+    private BatchSaveResult saveBatchInternal(BatchPushRequest request) {
         String batchNum = request.getBatchNum();
         log.info("开始处理批次推送，批次号: {}", batchNum);
 
@@ -158,6 +182,46 @@ public class BatchServiceImpl implements BatchService {
         return saveResult;
     }
 
+    private void sleepBeforeSaveRetry(long delayMs, String batchNum) {
+        try {
+            Thread.sleep(delayMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("批次推送保存死锁重试等待被中断，批次号: " + batchNum, e);
+        }
+    }
+
+    private boolean isDeadlock(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof DeadlockLoserDataAccessException) {
+                return true;
+            }
+            String className = current.getClass().getName();
+            if (className.contains("MySQLTransactionRollbackException")
+                    || className.contains("SQLTransactionRollbackException")) {
+                return true;
+            }
+            String message = current.getMessage();
+            if (message != null && (message.contains("Deadlock found")
+                    || message.contains("try restarting transaction"))) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
+    }
+
+    private String rootCauseMessage(Throwable throwable) {
+        Throwable current = throwable;
+        Throwable root = throwable;
+        while (current != null) {
+            root = current;
+            current = current.getCause();
+        }
+        return root.getMessage() != null ? root.getMessage() : root.getClass().getSimpleName();
+    }
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public int deleteBoardsByBatchAndWork(String batchNum, String workId) {
@@ -171,6 +235,11 @@ public class BatchServiceImpl implements BatchService {
         Set<String> dedupWorkIds = new LinkedHashSet<>(targetedWorkIds);
         int totalDeleted = 0;
         for (String workId : dedupWorkIds) {
+            MesWorkOrder current = workOrderMapper.selectByBatchNumAndWorkId(batchNum, workId);
+            if (current != null && "UPDATING".equals(current.getPrepackageStatus())) {
+                log.info("工单 {} 正在拉取，跳过本次板件清理", workId);
+                continue;
+            }
             totalDeleted += boardMapper.physicalDeleteByBatchNumAndWorkId(batchNum, workId);
         }
         return totalDeleted;

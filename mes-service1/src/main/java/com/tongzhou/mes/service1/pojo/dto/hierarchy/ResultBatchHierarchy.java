@@ -42,7 +42,7 @@ public class ResultBatchHierarchy {
         private boolean success;
         @Schema(description = "同步结果消息")
         private String message;
-        @Schema(description = "错误详情（成功时为空）")
+        @Schema(description = "面向前端的错误摘要（成功时为空，完整失败明细见服务日志或同步记录）")
         private String errorDetail;
         @Schema(description = "更新的板件数量")
         private int updatedBoardCount;

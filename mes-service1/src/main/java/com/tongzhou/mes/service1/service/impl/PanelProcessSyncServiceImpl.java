@@ -52,6 +52,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequiredArgsConstructor
 public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
 
+    private static final int SYNC_CORE_POOL_SIZE = 2;
+    private static final int SYNC_MAX_POOL_SIZE = 4;
+
     private final MesWorkOrderMapper workOrderMapper;
     private final ThirdPartyMesClient thirdPartyMesClient;
     private final MesPanelProcessSyncMapper panelProcessSyncMapper;
@@ -62,11 +65,12 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
 
     /**
      * 同步专用线程池，并行调用 pullSingleWorkOrderForSync 以提升大批次性能。
+     * 并发控制在 2~4，避免同批次大量工单同时覆盖写库引发死锁。
      * 调用方通过 CompletableFuture.allOf().join() 阻塞等待全部完成，
      * 对外表现为同步执行。
      */
     private final ExecutorService syncExecutor = new ThreadPoolExecutor(
-            4, 8, 60L, TimeUnit.SECONDS,
+            SYNC_CORE_POOL_SIZE, SYNC_MAX_POOL_SIZE, 60L, TimeUnit.SECONDS,
             new LinkedBlockingQueue<>(200),
             r -> {
                 Thread t = new Thread(r, "panel-process-sync-");
@@ -75,6 +79,11 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
             },
             new ThreadPoolExecutor.CallerRunsPolicy()
     );
+
+    private enum PullMode {
+        NORMAL,
+        RESYNC
+    }
 
     @Override
     public SyncResult syncBatchProcessIfNeeded(String batchNum) {
@@ -91,6 +100,34 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
             return SyncResult.alreadySynced();
         }
 
+        return syncBatchProcess(batchNum, PullMode.NORMAL);
+    }
+
+    @Override
+    public SyncResult resyncBatchProcess(String batchNum) {
+        if (!syncEnabled) {
+            return SyncResult.failure("功能未开启", "mes.panel.process.sync.enabled=false");
+        }
+        if (batchNum == null || batchNum.trim().isEmpty()) {
+            return SyncResult.failure("批次号为空", null);
+        }
+
+        // 接口级去重：同一批次被该接口实际同步过一次后，后续查询只读库内数据。
+        if (panelProcessSyncMapper.countByBatchNum(batchNum) > 0) {
+            log.info("批次 {} 已由查询接口触发过同步，本次跳过第三方重拉", batchNum);
+            return SyncResult.alreadySynced();
+        }
+
+        try {
+            log.info("批次 {} 首次由查询接口触发同步，按原保存逻辑重新拉取", batchNum);
+            return syncBatchProcess(batchNum, PullMode.RESYNC);
+        } catch (Exception e) {
+            log.error("批次 {} 查询接口触发同步异常: {}", batchNum, e.getMessage(), e);
+            return SyncResult.failure("查询接口触发同步异常: " + e.getMessage(), e.getMessage());
+        }
+    }
+
+    private SyncResult syncBatchProcess(String batchNum, PullMode pullMode) {
         log.info("开始同步批次 {} 下所有工单数据", batchNum);
         long startTime = System.currentTimeMillis();
 
@@ -117,18 +154,20 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
 
                 CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                     try {
-                        SyncPullResult pullResult =
-                                prePackageService.pullSingleWorkOrderForSync(batchNum, workId);
-                        if ("PULLED".equals(pullResult.getStatus())) {
+                        SyncPullResult pullResult = pullMode == PullMode.RESYNC
+                                ? prePackageService.repullSingleWorkOrderForSync(batchNum, workId)
+                                : prePackageService.pullSingleWorkOrderForSync(batchNum, workId);
+                        String status = pullResult != null ? pullResult.getStatus() : null;
+                        if ("PULLED".equals(status)) {
                             totalBoardCount.addAndGet((int) pullResult.getBoardCount());
                             updateRecord(batchNum, workId, "SUCCESS", null);
                             successCount.incrementAndGet();
-                        } else if ("PROCESSING".equals(pullResult.getStatus())) {
+                        } else if ("PROCESSING".equals(status)) {
                             updateRecord(batchNum, workId, "SUCCESS", "工单正在处理中，本次跳过");
                             successCount.incrementAndGet();
                         } else {
-                            String errMsg = pullResult.getErrorMessage() != null
-                                    ? pullResult.getErrorMessage() : "同步失败，status=" + pullResult.getStatus();
+                            String errMsg = buildFailureDetail(batchNum, workId, pullResult);
+                            log.warn("批次 {} 工单 {} 同步失败: {}", batchNum, workId, errMsg);
                             updateRecord(batchNum, workId, "FAILED", errMsg);
                             synchronized (errors) {
                                 errors.add("工单 " + workId + ": " + errMsg);
@@ -137,7 +176,7 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
                         }
                     } catch (Exception e) {
                         String errMsg = e.getMessage() != null ? e.getMessage() : "未知错误";
-                        log.error("同步工单 {} 失败: {}", workId, errMsg);
+                        log.error("同步工单 {} 失败: {}", workId, errMsg, e);
                         updateRecord(batchNum, workId, "FAILED", errMsg);
                         synchronized (errors) {
                             errors.add("工单 " + workId + ": " + errMsg);
@@ -163,15 +202,17 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
                         totalBoardCount.get());
             } else if (success > 0) {
                 String errorDetail = String.join("; ", errors);
-                log.warn("批次 {} 同步部分失败，成功: {}, 失败: {}, 耗时: {}ms",
-                        batchNum, success, failed, elapsed);
+                log.warn("批次 {} 同步部分失败，成功: {}, 失败: {}, 耗时: {}ms，失败明细: {}",
+                        batchNum, success, failed, elapsed, errorDetail);
                 return SyncResult.partialFailure(
                         "部分失败：成功 " + success + "/" + total + " 个工单",
                         errorDetail, totalBoardCount.get());
             } else {
                 String errorDetail = String.join("; ", errors);
-                log.error("批次 {} 同步全部失败，耗时: {}ms", batchNum, elapsed);
-                return SyncResult.failure("全部失败：" + total + " 个工单均同步失败", errorDetail);
+                log.error("批次 {} 同步全部失败，耗时: {}ms，失败明细: {}",
+                        batchNum, elapsed, errorDetail);
+                return SyncResult.failure(
+                        "全部失败：" + total + " 个工单均同步失败", errorDetail);
             }
 
         } catch (Exception e) {
@@ -182,6 +223,15 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
 
     @Override
     public SyncResult discoverAndSyncByPartCode(String partCode) {
+        return discoverAndSyncByPartCode(partCode, false);
+    }
+
+    @Override
+    public SyncResult discoverAndResyncByPartCode(String partCode) {
+        return discoverAndSyncByPartCode(partCode, true);
+    }
+
+    private SyncResult discoverAndSyncByPartCode(String partCode, boolean resync) {
         if (!syncEnabled) {
             log.debug("面板工序同步功能未开启，跳过板件 {} 的批次发现", partCode);
             return null;
@@ -207,12 +257,50 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
                 log.warn("MES batchQuery 返回的板件 {} 缺少批次号", partCode);
                 return null;
             }
-            log.info("从 MES 发现板件 {} 属于批次 {}，触发全批次同步", partCode, batchNum);
-            return syncBatchProcessIfNeeded(batchNum);
+            log.info("从 MES 发现板件 {} 属于批次 {}，触发{}全批次同步", partCode, batchNum,
+                    resync ? "查询接口去重后的" : "");
+            return resync ? resyncBatchProcess(batchNum) : syncBatchProcessIfNeeded(batchNum);
         } catch (Exception e) {
             log.error("从 MES 发现板件 {} 的批次失败: {}", partCode, e.getMessage());
             return null;
         }
+    }
+
+    private String buildFailureDetail(String batchNum, String workId, SyncPullResult pullResult) {
+        String status = pullResult != null ? pullResult.getStatus() : null;
+        String errorCode = pullResult != null ? pullResult.getErrorCode() : null;
+        String errorMessage = pullResult != null ? pullResult.getErrorMessage() : null;
+        MesWorkOrder latest = null;
+        try {
+            latest = workOrderMapper.selectByBatchNumAndWorkId(batchNum, workId);
+            if (!hasText(errorMessage) && latest != null) {
+                errorMessage = latest.getErrorMessage();
+            }
+        } catch (Exception e) {
+            log.warn("查询工单 {} 最新失败原因失败: {}", workId, e.getMessage());
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("同步失败");
+        builder.append(", status=").append(hasText(status) ? status : "UNKNOWN");
+        if (hasText(errorCode)) {
+            builder.append(", errorCode=").append(errorCode);
+        }
+        if (hasText(errorMessage)) {
+            builder.append(", errorMessage=").append(errorMessage);
+        } else {
+            builder.append(", errorMessage=未返回错误信息，请查看同时间第三方接口调用日志");
+        }
+        if (latest != null) {
+            builder.append(", dbStatus=").append(latest.getPrepackageStatus());
+            builder.append(", retryCount=").append(latest.getRetryCount());
+            builder.append(", lastPullTime=").append(latest.getLastPullTime());
+        }
+        return builder.toString();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private void insertRecord(String batchNum, String workId) {

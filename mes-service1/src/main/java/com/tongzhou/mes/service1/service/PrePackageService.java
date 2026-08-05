@@ -55,4 +55,10 @@ public interface PrePackageService {
      * 同步拉取指定批次工单，若工单正在处理中则立即返回PROCESSING。
      */
     SyncPullResult pullSingleWorkOrderForSync(String batchNum, String workId);
+
+    /**
+     * 查询触发的同步重拉，不暴露为NOT_PULLED，避免被定时任务抢占。
+     */
+    SyncPullResult repullSingleWorkOrderForSync(String batchNum, String workId);
+
 }
