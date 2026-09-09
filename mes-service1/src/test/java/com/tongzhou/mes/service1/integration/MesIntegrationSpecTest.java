@@ -14,6 +14,7 @@ import com.tongzhou.mes.service1.mapper.MesPackageMapper;
 import com.tongzhou.mes.service1.mapper.MesPrepackageOrderMapper;
 import com.tongzhou.mes.service1.mapper.MesWorkOrderMapper;
 import com.tongzhou.mes.service1.mapper.MesWorkReportMapper;
+import com.tongzhou.mes.service1.mapper.MesPanelProcessSyncMapper;
 import com.tongzhou.mes.service1.pojo.dto.BatchPushRequest;
 import com.tongzhou.mes.service1.pojo.dto.PrepackageDataDTO;
 import com.tongzhou.mes.service1.pojo.dto.ThirdPartyPrepackageResponseDTO;
@@ -113,6 +114,9 @@ class MesIntegrationSpecTest {
 
     @Autowired
     private MesWorkReportMapper workReportMapper;
+
+    @Autowired
+    private MesPanelProcessSyncMapper panelProcessSyncMapper;
 
     @SpyBean
     private EmailNotificationServiceImpl emailNotificationService;
@@ -745,6 +749,13 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.containerNumber").value("CONTAINER-A"))
             .andExpect(jsonPath("$.setNumber").value("SET-A"))
             .andExpect(jsonPath("$.groove").value("GROOVE-A"));
+
+        // 批次同步中时拒绝层级查询，并返回明确提示。
+        panelProcessSyncMapper.updateResult(batchNum, "__BATCH__", "PROCESSING", null);
+        mockMvc.perform(get("/api/v1/production/part/{partCode}/work-order-and-batch", partCode))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.message").value("正在同步数据中"));
+        panelProcessSyncMapper.updateResult(batchNum, "__BATCH__", "SUCCESS", null);
 
         // 状态为 UPDATING 时返回 409
         MesWorkOrder workOrder = getWorkOrder(workId);

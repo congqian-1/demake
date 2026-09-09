@@ -27,6 +27,7 @@ import com.tongzhou.mes.service1.mapper.MesPackageMapper;
 import com.tongzhou.mes.service1.mapper.MesPrepackageOrderMapper;
 import com.tongzhou.mes.service1.mapper.MesWorkOrderMapper;
 import com.tongzhou.mes.service1.mapper.MesWorkReportMapper;
+import com.tongzhou.mes.service1.exception.WorkOrderUpdatingException;
 import com.tongzhou.mes.service1.pojo.dto.hierarchy.BatchHierarchy;
 import com.tongzhou.mes.service1.pojo.dto.hierarchy.ResultBatchHierarchy;
 import com.tongzhou.mes.service1.pojo.entity.MesBoard;
@@ -42,6 +43,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -146,6 +148,26 @@ class PartQueryServiceImplTest {
         assertNotNull(result.getSync());
         assertTrue(result.getSync().getErrorDetail().length() < detail.length());
         assertTrue(result.getSync().getErrorDetail().contains("已截断"));
+    }
+
+    @Test
+    @DisplayName("queryWorkOrderAndBatch: 批次正在同步时拒绝查询")
+    void shouldRejectQueryWhenBatchIsSyncing() {
+        MesBoard board = buildBoard();
+        MesWorkOrder workOrder = buildWorkOrder("PULLED");
+
+        when(boardMapper.selectOne(anyBoardWrapper())).thenReturn(board);
+        when(workOrderMapper.selectByBatchNumAndWorkId(BATCH_NUM, WORK_ID)).thenReturn(workOrder);
+        when(panelProcessSyncService.resyncBatchProcess(BATCH_NUM))
+                .thenReturn(PanelProcessSyncService.SyncResult.syncing());
+
+        WorkOrderUpdatingException exception = assertThrows(
+                WorkOrderUpdatingException.class,
+                () -> service.queryWorkOrderAndBatch(PART_CODE)
+        );
+
+        assertEquals("正在同步数据中", exception.getMessage());
+        verify(batchPackagingQueryService, never()).getBatchHierarchy(anyString());
     }
 
     private MesBoard buildBoard() {

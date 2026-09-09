@@ -123,4 +123,106 @@ class PanelProcessSyncIntegrationTest {
         // 单元测试已覆盖，集成测试仅确认不会抛异常
         // syncEnabled 已通过 @TestPropertySource 设为 true，此测试仅占位
     }
+
+    @Test
+    @DisplayName("6. 超时批次占位可被接管并完成同步")
+    void testReclaimStaleBatchMarker() {
+        String batchNum = "TEST-STALE-" + System.nanoTime();
+        try {
+            MesPanelProcessSync marker = new MesPanelProcessSync();
+            marker.setBatchNum(batchNum);
+            marker.setWorkId("__BATCH__");
+            marker.setSyncResult("PROCESSING");
+            marker.setCreatedTime(LocalDateTime.now().minusMinutes(31));
+            panelProcessSyncMapper.insert(marker);
+
+            SyncResult result = panelProcessSyncService.syncBatchProcessIfNeeded(batchNum);
+
+            assertTrue(result.isSuccess());
+            MesPanelProcessSync completed =
+                    panelProcessSyncMapper.selectByBatchNumAndWorkId(batchNum, "__BATCH__");
+            assertNotNull(completed);
+            assertEquals("SUCCESS", completed.getSyncResult());
+        } finally {
+            jdbcTemplate.update("DELETE FROM mes_panel_process_sync WHERE batch_num = ?", batchNum);
+        }
+    }
+
+    @Test
+    @DisplayName("7. 近期旧版空状态记录按同步中处理")
+    void testRecentLegacyNullResultIsProcessing() {
+        String batchNum = "TEST-LEGACY-" + System.nanoTime();
+        try {
+            MesPanelProcessSync record = new MesPanelProcessSync();
+            record.setBatchNum(batchNum);
+            record.setWorkId("LEGACY-WORK");
+            record.setCreatedTime(LocalDateTime.now());
+            panelProcessSyncMapper.insert(record);
+
+            SyncResult result = panelProcessSyncService.syncBatchProcessIfNeeded(batchNum);
+
+            assertTrue(result.isSyncing());
+            assertEquals("正在同步数据中", result.getMessage());
+        } finally {
+            jdbcTemplate.update("DELETE FROM mes_panel_process_sync WHERE batch_num = ?", batchNum);
+        }
+    }
+
+    @Test
+    @DisplayName("8. 超时接管后旧执行者不能覆盖新租约")
+    void testStaleOwnerCannotOverwriteNewLease() {
+        String batchNum = "TEST-FENCING-" + System.nanoTime();
+        try {
+            MesPanelProcessSync marker = new MesPanelProcessSync();
+            marker.setBatchNum(batchNum);
+            marker.setWorkId("__BATCH__");
+            marker.setSyncResult("PROCESSING");
+            marker.setErrorDetail("old-owner");
+            marker.setCreatedTime(LocalDateTime.now().minusMinutes(31));
+            panelProcessSyncMapper.insert(marker);
+
+            int reclaimed = panelProcessSyncMapper.reclaimStaleBatchMarker(
+                    batchNum, LocalDateTime.now().minusMinutes(30), "new-owner");
+            int overwritten = panelProcessSyncMapper.updateBatchResult(
+                    batchNum, "SUCCESS", null, "old-owner");
+
+            assertEquals(1, reclaimed);
+            assertEquals(0, overwritten);
+            MesPanelProcessSync current =
+                    panelProcessSyncMapper.selectByBatchNumAndWorkId(batchNum, "__BATCH__");
+            assertNotNull(current);
+            assertEquals("PROCESSING", current.getSyncResult());
+            assertEquals("new-owner", current.getErrorDetail());
+        } finally {
+            jdbcTemplate.update("DELETE FROM mes_panel_process_sync WHERE batch_num = ?", batchNum);
+        }
+    }
+
+    @Test
+    @DisplayName("9. 外部工单处理中释放租约后可立即重新探测")
+    void testReleasedProcessingMarkerCanBeReclaimedImmediately() {
+        String batchNum = "TEST-RETRY-" + System.nanoTime();
+        try {
+            MesPanelProcessSync marker = new MesPanelProcessSync();
+            marker.setBatchNum(batchNum);
+            marker.setWorkId("__BATCH__");
+            marker.setSyncResult("PROCESSING");
+            marker.setErrorDetail("waiting-owner");
+            marker.setCreatedTime(LocalDateTime.now());
+            panelProcessSyncMapper.insert(marker);
+
+            int released = panelProcessSyncMapper.releaseBatchMarkerForRetry(
+                    batchNum, "waiting-owner", LocalDateTime.now().minusMinutes(31));
+            SyncResult result = panelProcessSyncService.syncBatchProcessIfNeeded(batchNum);
+
+            assertEquals(1, released);
+            assertTrue(result.isSuccess());
+            MesPanelProcessSync completed =
+                    panelProcessSyncMapper.selectByBatchNumAndWorkId(batchNum, "__BATCH__");
+            assertNotNull(completed);
+            assertEquals("SUCCESS", completed.getSyncResult());
+        } finally {
+            jdbcTemplate.update("DELETE FROM mes_panel_process_sync WHERE batch_num = ?", batchNum);
+        }
+    }
 }

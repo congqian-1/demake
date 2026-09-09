@@ -96,6 +96,7 @@ public class PartQueryServiceImpl implements PartQueryService {
             // 本地没有该板件，尝试从 MES 反查批次并按原批次拉取流程重新执行一次。
             log.info("板件码 {} 本地不存在，尝试从 MES 发现批次并按原逻辑重新拉取", partCode);
             syncResult = panelProcessSyncService.discoverAndResyncByPartCode(partCode);
+            rejectIfBatchSyncing(syncResult, partCode);
             board = findActiveBoard(partCode);
             if (board == null) {
                 log.warn("板件码 {} 不存在（MES 接口同步处理后仍未找到）", partCode);
@@ -120,6 +121,7 @@ public class PartQueryServiceImpl implements PartQueryService {
             }
             log.info("板件码 {} 本地已存在，批次 {} 若未由接口同步过则按原逻辑重新拉取后再查询", partCode, batchNum);
             syncResult = panelProcessSyncService.resyncBatchProcess(batchNum);
+            rejectIfBatchSyncing(syncResult, workOrder.getWorkId());
             board = findActiveBoard(partCode);
             if (board == null) {
                 log.warn("板件码 {} 在批次接口同步处理后已不存在", partCode);
@@ -165,6 +167,12 @@ public class PartQueryServiceImpl implements PartQueryService {
 
         log.info("查询板件码 {} 的批次层级信息成功，批次号: {}", partCode, batchNum);
         return response;
+    }
+
+    private void rejectIfBatchSyncing(PanelProcessSyncService.SyncResult syncResult, String identifier) {
+        if (syncResult != null && syncResult.isSyncing()) {
+            throw new WorkOrderUpdatingException(identifier, syncResult.getMessage());
+        }
     }
 
     @Override
