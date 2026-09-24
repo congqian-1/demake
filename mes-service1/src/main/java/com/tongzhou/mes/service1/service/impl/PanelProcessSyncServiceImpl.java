@@ -57,6 +57,9 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
     private static final int SYNC_MAX_POOL_SIZE = 4;
     private static final String BATCH_SYNC_MARKER = "__BATCH__";
     private static final long SYNC_PROCESSING_TIMEOUT_MINUTES = 30L;
+    private static final int BATCH_ERROR_DETAIL_MAX_LENGTH = 1000;
+    private static final String BATCH_TERMINAL_FALLBACK_DETAIL =
+            "批次同步已结束，但结果详情写入失败，详见工单级记录";
 
     private final MesWorkOrderMapper workOrderMapper;
     private final ThirdPartyMesClient thirdPartyMesClient;
@@ -205,15 +208,28 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
             }
             return result;
         }
+        String terminalStatus = result.isSuccess() ? "SUCCESS" : "FAILED";
+        String errorDetail = truncateBatchErrorDetail(result.getErrorDetail());
         try {
             int updated = panelProcessSyncMapper.updateBatchResult(batchNum,
-                    result.isSuccess() ? "SUCCESS" : "FAILED", result.getErrorDetail(), ownerToken);
+                    terminalStatus, errorDetail, ownerToken);
             if (updated > 0) {
                 return result;
             }
             log.warn("批次 {} 同步租约已被其他执行者接管，拒绝返回本次旧执行结果", batchNum);
         } catch (Exception e) {
-            log.warn("批次 {} 写入同步终态失败，拒绝返回可能过期的数据: {}", batchNum, e.getMessage());
+            log.error("批次 {} 写入同步终态失败，改用短错误信息标记为 FAILED: {}", batchNum, e.getMessage());
+            try {
+                int fallbackUpdated = panelProcessSyncMapper.updateBatchResult(batchNum,
+                        "FAILED", BATCH_TERMINAL_FALLBACK_DETAIL, ownerToken);
+                if (fallbackUpdated > 0) {
+                    return SyncResult.failure("批次同步结果写入失败", BATCH_TERMINAL_FALLBACK_DETAIL);
+                }
+                log.warn("批次 {} 写入 FAILED 兜底状态时租约已被其他执行者接管", batchNum);
+            } catch (Exception fallbackException) {
+                log.error("批次 {} 写入 FAILED 兜底状态仍失败: {}", batchNum, fallbackException.getMessage(),
+                        fallbackException);
+            }
         }
         return SyncResult.syncing();
     }
@@ -237,7 +253,6 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
             AtomicInteger failCount = new AtomicInteger(0);
             AtomicInteger processingCount = new AtomicInteger(0);
             AtomicInteger totalBoardCount = new AtomicInteger(0);
-            List<String> errors = new ArrayList<>();
 
             List<CompletableFuture<Void>> futures = new ArrayList<>();
             for (MesWorkOrder workOrder : workOrders) {
@@ -261,18 +276,12 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
                             String errMsg = buildFailureDetail(batchNum, workId, pullResult);
                             log.warn("批次 {} 工单 {} 同步失败: {}", batchNum, workId, errMsg);
                             updateRecord(batchNum, workId, "FAILED", errMsg);
-                            synchronized (errors) {
-                                errors.add("工单 " + workId + ": " + errMsg);
-                            }
                             failCount.incrementAndGet();
                         }
                     } catch (Exception e) {
                         String errMsg = e.getMessage() != null ? e.getMessage() : "未知错误";
                         log.error("同步工单 {} 失败: {}", workId, errMsg, e);
                         updateRecord(batchNum, workId, "FAILED", errMsg);
-                        synchronized (errors) {
-                            errors.add("工单 " + workId + ": " + errMsg);
-                        }
                         failCount.incrementAndGet();
                     } finally {
                         refreshBatchMarkerLease(batchNum, ownerToken);
@@ -300,24 +309,38 @@ public class PanelProcessSyncServiceImpl implements PanelProcessSyncService {
                         "同步完成，" + total + " 个工单全部成功，共 " + totalBoardCount.get() + " 个板件",
                         totalBoardCount.get());
             } else if (success > 0) {
-                String errorDetail = String.join("; ", errors);
-                log.warn("批次 {} 同步部分失败，成功: {}, 失败: {}, 耗时: {}ms，失败明细: {}",
-                        batchNum, success, failed, elapsed, errorDetail);
+                String errorDetail = buildBatchErrorSummary(success, failed, total);
+                log.warn("批次 {} 同步部分失败，成功: {}, 失败: {}, 耗时: {}ms，详见工单级记录",
+                        batchNum, success, failed, elapsed);
                 return SyncResult.partialFailure(
                         "部分失败：成功 " + success + "/" + total + " 个工单",
                         errorDetail, totalBoardCount.get());
             } else {
-                String errorDetail = String.join("; ", errors);
-                log.error("批次 {} 同步全部失败，耗时: {}ms，失败明细: {}",
-                        batchNum, elapsed, errorDetail);
+                String errorDetail = buildBatchErrorSummary(success, failed, total);
+                log.error("批次 {} 同步全部失败，耗时: {}ms，详见工单级记录",
+                        batchNum, elapsed);
                 return SyncResult.failure(
                         "全部失败：" + total + " 个工单均同步失败", errorDetail);
             }
 
         } catch (Exception e) {
             log.error("批次 {} 同步异常: {}", batchNum, e.getMessage(), e);
-            return SyncResult.failure("同步异常: " + e.getMessage(), e.getMessage());
+            return SyncResult.failure("同步异常: " + e.getMessage(),
+                    truncateBatchErrorDetail("批次同步异常：" + e.getMessage() + "，详见服务日志和工单级记录"));
         }
+    }
+
+    private String buildBatchErrorSummary(int success, int failed, int total) {
+        return truncateBatchErrorDetail(
+                "成功 " + success + "/" + total + "，失败 " + failed + "，详见工单级记录");
+    }
+
+    private String truncateBatchErrorDetail(String errorDetail) {
+        if (errorDetail == null || errorDetail.length() <= BATCH_ERROR_DETAIL_MAX_LENGTH) {
+            return errorDetail;
+        }
+        String suffix = "...(已截断)";
+        return errorDetail.substring(0, BATCH_ERROR_DETAIL_MAX_LENGTH - suffix.length()) + suffix;
     }
 
     @Override

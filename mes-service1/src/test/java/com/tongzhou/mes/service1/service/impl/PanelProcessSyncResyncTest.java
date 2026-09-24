@@ -37,6 +37,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.io.IOException;
 import java.util.Collections;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -123,8 +124,7 @@ class PanelProcessSyncResyncTest {
         SyncResult result = service.resyncBatchProcess(BATCH_NUM);
 
         assertFalse(result.isSuccess());
-        assertTrue(result.getErrorDetail().contains("status=FAILED"));
-        assertTrue(result.getErrorDetail().contains("第三方接口返回空数据"));
+        assertEquals("成功 0/1，失败 1，详见工单级记录", result.getErrorDetail());
         verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID),
                 eq("FAILED"), contains("第三方接口返回空数据"));
     }

@@ -35,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
@@ -284,9 +285,10 @@ class PanelProcessSyncServiceImplTest {
 
             assertFalse(result.isSuccess());
             assertTrue(result.getMessage().contains("部分失败"));
-            assertTrue(result.getErrorDetail().contains(WORK_ID_2));
-            assertTrue(result.getErrorDetail().contains("MES超时"));
+            assertEquals("成功 1/2，失败 1，详见工单级记录", result.getErrorDetail());
             assertEquals(10, result.getUpdatedBoardCount());
+            verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID_2),
+                    eq("FAILED"), contains("MES超时"));
         }
 
         @Test
@@ -304,12 +306,11 @@ class PanelProcessSyncServiceImplTest {
 
             assertFalse(result.isSuccess());
             assertTrue(result.getMessage().contains("全部失败"));
-            assertTrue(result.getErrorDetail().contains("网络错误"));
-            assertTrue(result.getErrorDetail().contains("解析失败"));
+            assertEquals("成功 0/2，失败 2，详见工单级记录", result.getErrorDetail());
         }
 
         @Test
-        @DisplayName("工单正在处理中(PROCESSING)时批次保持同步中")
+        @DisplayName("工单确实仍在处理中时继续拒绝批次查询")
         void shouldKeepBatchProcessingWhenWorkOrderIsProcessing() {
             List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1);
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
@@ -321,8 +322,28 @@ class PanelProcessSyncServiceImplTest {
             SyncResult result = service.syncBatchProcessIfNeeded(BATCH_NUM);
 
             assertTrue(result.isSyncing());
-            verify(panelProcessSyncMapper, never()).updateResult(eq(BATCH_NUM), eq(WORK_ID_1),
-                    eq("SUCCESS"), any());
+            verify(panelProcessSyncMapper, never()).updateBatchResult(eq(BATCH_NUM),
+                    anyString(), any(), anyString());
+            verify(panelProcessSyncMapper).releaseBatchMarkerForRetry(eq(BATCH_NUM), anyString(),
+                    any(LocalDateTime.class));
+        }
+
+        @Test
+        @DisplayName("同批次部分工单完成、部分仍在处理时继续拒绝查询")
+        void shouldKeepBatchProcessingWhenAnotherWorkOrderIsStillProcessing() {
+            List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1, WORK_ID_2);
+            when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
+            when(prePackageService.pullSingleWorkOrderForSync(BATCH_NUM, WORK_ID_1))
+                    .thenReturn(buildPullResult(WORK_ID_1, "PULLED", 10));
+            when(prePackageService.pullSingleWorkOrderForSync(BATCH_NUM, WORK_ID_2))
+                    .thenReturn(buildPullResult(WORK_ID_2, "PROCESSING", 0));
+
+            SyncResult result = service.syncBatchProcessIfNeeded(BATCH_NUM);
+
+            assertTrue(result.isSyncing());
+            assertEquals("正在同步数据中", result.getMessage());
+            verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID_1),
+                    eq("SUCCESS"), isNull());
             verify(panelProcessSyncMapper, never()).updateBatchResult(eq(BATCH_NUM),
                     anyString(), any(), anyString());
             verify(panelProcessSyncMapper).releaseBatchMarkerForRetry(eq(BATCH_NUM), anyString(),
@@ -340,9 +361,45 @@ class PanelProcessSyncServiceImplTest {
             SyncResult result = service.syncBatchProcessIfNeeded(BATCH_NUM);
 
             assertFalse(result.isSuccess());
-            assertTrue(result.getErrorDetail().contains("意外异常"));
+            assertEquals("成功 0/1，失败 1，详见工单级记录", result.getErrorDetail());
             verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID_1),
                     eq("FAILED"), contains("意外异常"));
+        }
+
+        @Test
+        @DisplayName("批次终态详情写入失败时使用短信息兜底标记 FAILED")
+        void shouldFallbackToShortFailedResultWhenTerminalDetailWriteFails() {
+            List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1);
+            when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
+            when(prePackageService.pullSingleWorkOrderForSync(BATCH_NUM, WORK_ID_1))
+                    .thenReturn(buildPullResult(WORK_ID_1, "FAILED", 0, "ERR-001", "MES超时"));
+            doThrow(new DataIntegrityViolationException("Data too long"))
+                    .doReturn(1)
+                    .when(panelProcessSyncMapper)
+                    .updateBatchResult(eq(BATCH_NUM), eq("FAILED"), anyString(), anyString());
+
+            SyncResult result = service.syncBatchProcessIfNeeded(BATCH_NUM);
+
+            assertFalse(result.isSuccess());
+            assertFalse(result.isSyncing());
+            assertEquals("批次同步已结束，但结果详情写入失败，详见工单级记录", result.getErrorDetail());
+            verify(panelProcessSyncMapper).updateBatchResult(eq(BATCH_NUM), eq("FAILED"),
+                    eq("成功 0/1，失败 1，详见工单级记录"), anyString());
+            verify(panelProcessSyncMapper).updateBatchResult(eq(BATCH_NUM), eq("FAILED"),
+                    eq("批次同步已结束，但结果详情写入失败，详见工单级记录"), anyString());
+        }
+
+        @Test
+        @DisplayName("批次级错误详情超过上限时截断")
+        void shouldTruncateOversizedBatchErrorDetail() {
+            String oversized = String.join("", Collections.nCopies(1200, "错"));
+
+            String truncated = ReflectionTestUtils.invokeMethod(
+                    service, "truncateBatchErrorDetail", oversized);
+
+            assertNotNull(truncated);
+            assertEquals(1000, truncated.length());
+            assertTrue(truncated.endsWith("...(已截断)"));
         }
 
         @Test
@@ -404,8 +461,7 @@ class PanelProcessSyncServiceImplTest {
             SyncResult result = service.resyncBatchProcess(BATCH_NUM);
 
             assertFalse(result.isSuccess());
-            assertTrue(result.getErrorDetail().contains("status=FAILED"));
-            assertTrue(result.getErrorDetail().contains("第三方接口返回空数据"));
+            assertEquals("成功 0/1，失败 1，详见工单级记录", result.getErrorDetail());
             verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID_1),
                     eq("FAILED"), contains("第三方接口返回空数据"));
         }
