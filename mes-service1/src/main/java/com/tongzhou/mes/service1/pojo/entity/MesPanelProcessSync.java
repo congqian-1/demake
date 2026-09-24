@@ -43,7 +43,7 @@ public class MesPanelProcessSync {
     /** 工单号 */
     private String workId;
 
-    /** 同步结果：SUCCESS / FAILED */
+    /** 同步结果：PROCESSING / SUCCESS / FAILED */
     private String syncResult;
 
     /** 失败原因详情（TEXT），成功时为空 */

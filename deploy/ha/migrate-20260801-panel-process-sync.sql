@@ -1,10 +1,10 @@
--- 看板工序同步记录表：按 (batch_num, work_id) 唯一，每个工单独立记录同步结果。
+-- 看板工序同步记录表：按 (batch_num, work_id) 唯一；__BATCH__ 为批次级同步占位记录。
 CREATE TABLE IF NOT EXISTS mes_panel_process_sync (
     id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
     batch_num    VARCHAR(100) NOT NULL                COMMENT '批次号',
     work_id      VARCHAR(100) NOT NULL                COMMENT '工单号',
-    sync_result  VARCHAR(50)  DEFAULT NULL            COMMENT '同步结果：SUCCESS / FAILED',
-    error_detail TEXT         DEFAULT NULL            COMMENT '失败原因详情',
+    sync_result  VARCHAR(50)  DEFAULT NULL            COMMENT '同步结果：PROCESSING / SUCCESS / FAILED',
+    error_detail TEXT         DEFAULT NULL            COMMENT '失败原因详情；批次同步中时保存执行者令牌',
     synced_at    DATETIME     DEFAULT NULL            COMMENT '同步完成时间',
     created_time DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '记录创建时间',
     PRIMARY KEY (id),

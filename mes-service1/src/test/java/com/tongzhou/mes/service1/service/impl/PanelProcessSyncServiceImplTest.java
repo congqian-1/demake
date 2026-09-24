@@ -22,6 +22,7 @@ import com.tongzhou.mes.service1.mapper.MesPanelProcessSyncMapper;
 import com.tongzhou.mes.service1.mapper.MesWorkOrderMapper;
 import com.tongzhou.mes.service1.pojo.bo.SyncPullResult;
 import com.tongzhou.mes.service1.pojo.dto.BatchQueryResponseDTO;
+import com.tongzhou.mes.service1.pojo.entity.MesPanelProcessSync;
 import com.tongzhou.mes.service1.pojo.entity.MesWorkOrder;
 import com.tongzhou.mes.service1.service.PanelProcessSyncService;
 import com.tongzhou.mes.service1.service.PanelProcessSyncService.SyncResult;
@@ -34,9 +35,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -69,6 +72,11 @@ class PanelProcessSyncServiceImplTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(service, "syncEnabled", true);
+        lenient().when(panelProcessSyncMapper.updateBatchResult(anyString(), anyString(),
+                nullable(String.class), anyString())).thenReturn(1);
+        lenient().when(panelProcessSyncMapper.refreshBatchMarkerLease(anyString(), anyString())).thenReturn(1);
+        lenient().when(panelProcessSyncMapper.releaseBatchMarkerForRetry(anyString(), anyString(),
+                any(LocalDateTime.class))).thenReturn(1);
     }
 
     // ==================== syncBatchProcessIfNeeded ====================
@@ -117,6 +125,112 @@ class PanelProcessSyncServiceImplTest {
         }
 
         @Test
+        @DisplayName("批次有未完成同步记录时返回 syncing")
+        void shouldReturnSyncingWhenProcessingRecordsExist() {
+            MesPanelProcessSync marker = new MesPanelProcessSync();
+            marker.setBatchNum(BATCH_NUM);
+            marker.setWorkId("__BATCH__");
+            marker.setSyncResult("PROCESSING");
+            marker.setCreatedTime(java.time.LocalDateTime.now());
+            when(panelProcessSyncMapper.selectByBatchNumAndWorkId(BATCH_NUM, "__BATCH__"))
+                    .thenReturn(marker);
+
+            SyncResult result = service.resyncBatchProcess(BATCH_NUM);
+
+            assertTrue(result.isSyncing());
+            assertFalse(result.isSuccess());
+            assertEquals("正在同步数据中", result.getMessage());
+            verifyNoInteractions(workOrderMapper, prePackageService, thirdPartyMesClient);
+        }
+
+        @Test
+        @DisplayName("并发请求抢占批次占位失败时返回 syncing")
+        void shouldReturnSyncingWhenConcurrentRequestClaimsBatch() {
+            MesPanelProcessSync marker = new MesPanelProcessSync();
+            marker.setBatchNum(BATCH_NUM);
+            marker.setWorkId("__BATCH__");
+            marker.setSyncResult("PROCESSING");
+            marker.setCreatedTime(LocalDateTime.now());
+            when(panelProcessSyncMapper.selectByBatchNumAndWorkId(BATCH_NUM, "__BATCH__"))
+                    .thenReturn(null, marker);
+            when(panelProcessSyncMapper.insert(any(MesPanelProcessSync.class)))
+                    .thenThrow(new org.springframework.dao.DuplicateKeyException("dup"));
+
+            SyncResult result = service.resyncBatchProcess(BATCH_NUM);
+
+            assertTrue(result.isSyncing());
+            verifyNoInteractions(workOrderMapper, prePackageService, thirdPartyMesClient);
+        }
+
+        @Test
+        @DisplayName("超时的批次占位可被原子接管并重新同步")
+        void shouldReclaimStaleBatchMarker() {
+            MesPanelProcessSync marker = new MesPanelProcessSync();
+            marker.setBatchNum(BATCH_NUM);
+            marker.setWorkId("__BATCH__");
+            marker.setSyncResult("PROCESSING");
+            marker.setCreatedTime(LocalDateTime.now().minusMinutes(31));
+            when(panelProcessSyncMapper.selectByBatchNumAndWorkId(BATCH_NUM, "__BATCH__"))
+                    .thenReturn(marker);
+            when(panelProcessSyncMapper.reclaimStaleBatchMarker(eq(BATCH_NUM), any(LocalDateTime.class), anyString()))
+                    .thenReturn(1);
+            when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(Collections.emptyList());
+
+            SyncResult result = service.resyncBatchProcess(BATCH_NUM);
+
+            assertTrue(result.isSuccess());
+            verify(panelProcessSyncMapper).updateBatchResult(eq(BATCH_NUM), eq("SUCCESS"),
+                    isNull(), anyString());
+        }
+
+        @Test
+        @DisplayName("租约被接管后旧执行结果按同步中返回")
+        void shouldRejectResultWhenLeaseWasLost() {
+            when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(Collections.emptyList());
+            when(panelProcessSyncMapper.updateBatchResult(eq(BATCH_NUM), eq("SUCCESS"),
+                    isNull(), anyString())).thenReturn(0);
+
+            SyncResult result = service.syncBatchProcessIfNeeded(BATCH_NUM);
+
+            assertTrue(result.isSyncing());
+            assertEquals("正在同步数据中", result.getMessage());
+        }
+
+        @Test
+        @DisplayName("旧版本近期空状态记录按同步中处理")
+        void shouldTreatRecentLegacyNullResultAsSyncing() {
+            MesPanelProcessSync legacyRecord = new MesPanelProcessSync();
+            legacyRecord.setBatchNum(BATCH_NUM);
+            legacyRecord.setWorkId(WORK_ID_1);
+            legacyRecord.setCreatedTime(LocalDateTime.now());
+            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(1);
+            when(panelProcessSyncMapper.selectLatestLegacyProcessing(BATCH_NUM)).thenReturn(legacyRecord);
+
+            SyncResult result = service.resyncBatchProcess(BATCH_NUM);
+
+            assertTrue(result.isSyncing());
+            verifyNoInteractions(workOrderMapper, prePackageService, thirdPartyMesClient);
+        }
+
+        @Test
+        @DisplayName("旧版本超时空状态记录不会永久阻断查询")
+        void shouldResyncWhenLegacyNullResultIsStale() {
+            MesPanelProcessSync legacyRecord = new MesPanelProcessSync();
+            legacyRecord.setBatchNum(BATCH_NUM);
+            legacyRecord.setWorkId(WORK_ID_1);
+            legacyRecord.setCreatedTime(LocalDateTime.now().minusMinutes(31));
+            when(panelProcessSyncMapper.countByBatchNum(BATCH_NUM)).thenReturn(1);
+            when(panelProcessSyncMapper.selectLatestLegacyProcessing(BATCH_NUM)).thenReturn(legacyRecord);
+            when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(Collections.emptyList());
+
+            SyncResult result = service.resyncBatchProcess(BATCH_NUM);
+
+            assertTrue(result.isSuccess());
+            verify(panelProcessSyncMapper).insert(argThat(
+                    (MesPanelProcessSync record) -> "__BATCH__".equals(record.getWorkId())));
+        }
+
+        @Test
         @DisplayName("批次下没有工单时返回 success(0)")
         void shouldReturnSuccessWhenNoWorkOrders() {
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(Collections.emptyList());
@@ -125,8 +239,8 @@ class PanelProcessSyncServiceImplTest {
 
             assertTrue(result.isSuccess());
             assertEquals(0, result.getUpdatedBoardCount());
-            // 无工单时插入占位记录用于去重
-            verify(panelProcessSyncMapper).insert(any(com.tongzhou.mes.service1.pojo.entity.MesPanelProcessSync.class));
+            // 批次级占位 + 无工单占位。
+            verify(panelProcessSyncMapper, times(2)).insert(any(MesPanelProcessSync.class));
         }
 
         @Test
@@ -147,7 +261,7 @@ class PanelProcessSyncServiceImplTest {
             assertTrue(result.isSuccess());
             assertEquals(15, result.getUpdatedBoardCount());
             assertNull(result.getErrorDetail());
-            verify(panelProcessSyncMapper, times(2)).insert(any(com.tongzhou.mes.service1.pojo.entity.MesPanelProcessSync.class));
+            verify(panelProcessSyncMapper, times(3)).insert(any(MesPanelProcessSync.class));
             verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID_1),
                     eq("SUCCESS"), isNull());
             verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID_2),
@@ -171,9 +285,10 @@ class PanelProcessSyncServiceImplTest {
 
             assertFalse(result.isSuccess());
             assertTrue(result.getMessage().contains("部分失败"));
-            assertTrue(result.getErrorDetail().contains(WORK_ID_2));
-            assertTrue(result.getErrorDetail().contains("MES超时"));
+            assertEquals("成功 1/2，失败 1，详见工单级记录", result.getErrorDetail());
             assertEquals(10, result.getUpdatedBoardCount());
+            verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID_2),
+                    eq("FAILED"), contains("MES超时"));
         }
 
         @Test
@@ -191,13 +306,12 @@ class PanelProcessSyncServiceImplTest {
 
             assertFalse(result.isSuccess());
             assertTrue(result.getMessage().contains("全部失败"));
-            assertTrue(result.getErrorDetail().contains("网络错误"));
-            assertTrue(result.getErrorDetail().contains("解析失败"));
+            assertEquals("成功 0/2，失败 2，详见工单级记录", result.getErrorDetail());
         }
 
         @Test
-        @DisplayName("工单正在处理中(PROCESSING)视为成功")
-        void shouldTreatProcessingAsSuccess() {
+        @DisplayName("工单确实仍在处理中时继续拒绝批次查询")
+        void shouldKeepBatchProcessingWhenWorkOrderIsProcessing() {
             List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1);
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
 
@@ -207,9 +321,33 @@ class PanelProcessSyncServiceImplTest {
 
             SyncResult result = service.syncBatchProcessIfNeeded(BATCH_NUM);
 
-            assertTrue(result.isSuccess());
+            assertTrue(result.isSyncing());
+            verify(panelProcessSyncMapper, never()).updateBatchResult(eq(BATCH_NUM),
+                    anyString(), any(), anyString());
+            verify(panelProcessSyncMapper).releaseBatchMarkerForRetry(eq(BATCH_NUM), anyString(),
+                    any(LocalDateTime.class));
+        }
+
+        @Test
+        @DisplayName("同批次部分工单完成、部分仍在处理时继续拒绝查询")
+        void shouldKeepBatchProcessingWhenAnotherWorkOrderIsStillProcessing() {
+            List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1, WORK_ID_2);
+            when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
+            when(prePackageService.pullSingleWorkOrderForSync(BATCH_NUM, WORK_ID_1))
+                    .thenReturn(buildPullResult(WORK_ID_1, "PULLED", 10));
+            when(prePackageService.pullSingleWorkOrderForSync(BATCH_NUM, WORK_ID_2))
+                    .thenReturn(buildPullResult(WORK_ID_2, "PROCESSING", 0));
+
+            SyncResult result = service.syncBatchProcessIfNeeded(BATCH_NUM);
+
+            assertTrue(result.isSyncing());
+            assertEquals("正在同步数据中", result.getMessage());
             verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID_1),
-                    eq("SUCCESS"), contains("正在处理中"));
+                    eq("SUCCESS"), isNull());
+            verify(panelProcessSyncMapper, never()).updateBatchResult(eq(BATCH_NUM),
+                    anyString(), any(), anyString());
+            verify(panelProcessSyncMapper).releaseBatchMarkerForRetry(eq(BATCH_NUM), anyString(),
+                    any(LocalDateTime.class));
         }
 
         @Test
@@ -223,9 +361,45 @@ class PanelProcessSyncServiceImplTest {
             SyncResult result = service.syncBatchProcessIfNeeded(BATCH_NUM);
 
             assertFalse(result.isSuccess());
-            assertTrue(result.getErrorDetail().contains("意外异常"));
+            assertEquals("成功 0/1，失败 1，详见工单级记录", result.getErrorDetail());
             verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID_1),
                     eq("FAILED"), contains("意外异常"));
+        }
+
+        @Test
+        @DisplayName("批次终态详情写入失败时使用短信息兜底标记 FAILED")
+        void shouldFallbackToShortFailedResultWhenTerminalDetailWriteFails() {
+            List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1);
+            when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
+            when(prePackageService.pullSingleWorkOrderForSync(BATCH_NUM, WORK_ID_1))
+                    .thenReturn(buildPullResult(WORK_ID_1, "FAILED", 0, "ERR-001", "MES超时"));
+            doThrow(new DataIntegrityViolationException("Data too long"))
+                    .doReturn(1)
+                    .when(panelProcessSyncMapper)
+                    .updateBatchResult(eq(BATCH_NUM), eq("FAILED"), anyString(), anyString());
+
+            SyncResult result = service.syncBatchProcessIfNeeded(BATCH_NUM);
+
+            assertFalse(result.isSuccess());
+            assertFalse(result.isSyncing());
+            assertEquals("批次同步已结束，但结果详情写入失败，详见工单级记录", result.getErrorDetail());
+            verify(panelProcessSyncMapper).updateBatchResult(eq(BATCH_NUM), eq("FAILED"),
+                    eq("成功 0/1，失败 1，详见工单级记录"), anyString());
+            verify(panelProcessSyncMapper).updateBatchResult(eq(BATCH_NUM), eq("FAILED"),
+                    eq("批次同步已结束，但结果详情写入失败，详见工单级记录"), anyString());
+        }
+
+        @Test
+        @DisplayName("批次级错误详情超过上限时截断")
+        void shouldTruncateOversizedBatchErrorDetail() {
+            String oversized = String.join("", Collections.nCopies(1200, "错"));
+
+            String truncated = ReflectionTestUtils.invokeMethod(
+                    service, "truncateBatchErrorDetail", oversized);
+
+            assertNotNull(truncated);
+            assertEquals(1000, truncated.length());
+            assertTrue(truncated.endsWith("...(已截断)"));
         }
 
         @Test
@@ -233,8 +407,14 @@ class PanelProcessSyncServiceImplTest {
         void shouldHandleDuplicateInsertGracefully() {
             List<MesWorkOrder> workOrders = createWorkOrders(WORK_ID_1);
             when(workOrderMapper.selectByBatchNum(BATCH_NUM)).thenReturn(workOrders);
-            when(panelProcessSyncMapper.insert(any(com.tongzhou.mes.service1.pojo.entity.MesPanelProcessSync.class)))
-                    .thenThrow(new org.springframework.dao.DuplicateKeyException("dup"));
+            when(panelProcessSyncMapper.insert(any(MesPanelProcessSync.class)))
+                    .thenAnswer(invocation -> {
+                        MesPanelProcessSync record = invocation.getArgument(0);
+                        if (WORK_ID_1.equals(record.getWorkId())) {
+                            throw new org.springframework.dao.DuplicateKeyException("dup");
+                        }
+                        return 1;
+                    });
             when(prePackageService.pullSingleWorkOrderForSync(BATCH_NUM, WORK_ID_1))
                     .thenReturn(buildPullResult(WORK_ID_1, "PULLED", 3));
 
@@ -281,8 +461,7 @@ class PanelProcessSyncServiceImplTest {
             SyncResult result = service.resyncBatchProcess(BATCH_NUM);
 
             assertFalse(result.isSuccess());
-            assertTrue(result.getErrorDetail().contains("status=FAILED"));
-            assertTrue(result.getErrorDetail().contains("第三方接口返回空数据"));
+            assertEquals("成功 0/1，失败 1，详见工单级记录", result.getErrorDetail());
             verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID_1),
                     eq("FAILED"), contains("第三方接口返回空数据"));
         }
@@ -408,8 +587,19 @@ class PanelProcessSyncServiceImplTest {
             SyncResult r = SyncResult.alreadySynced();
             assertTrue(r.isAlreadySynced());
             assertTrue(r.isSuccess());
+            assertFalse(r.isSyncing());
             assertEquals(0, r.getUpdatedBoardCount());
             assertNull(r.getErrorDetail());
+        }
+
+        @Test
+        @DisplayName("syncing 返回正确的属性")
+        void syncing() {
+            SyncResult r = SyncResult.syncing();
+            assertFalse(r.isAlreadySynced());
+            assertFalse(r.isSuccess());
+            assertTrue(r.isSyncing());
+            assertEquals("正在同步数据中", r.getMessage());
         }
 
         @Test

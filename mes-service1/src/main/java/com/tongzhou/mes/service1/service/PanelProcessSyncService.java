@@ -66,6 +66,8 @@ public interface PanelProcessSyncService {
         private final boolean alreadySynced;
         /** 本次同步是否成功 */
         private final boolean success;
+        /** 批次是否仍在同步 */
+        private final boolean syncing;
         /** 结果描述 */
         private final String message;
         /** 详细错误信息（成功时为空） */
@@ -75,8 +77,14 @@ public interface PanelProcessSyncService {
 
         public SyncResult(boolean alreadySynced, boolean success, String message,
                           String errorDetail, int updatedBoardCount) {
+            this(alreadySynced, success, false, message, errorDetail, updatedBoardCount);
+        }
+
+        private SyncResult(boolean alreadySynced, boolean success, boolean syncing, String message,
+                           String errorDetail, int updatedBoardCount) {
             this.alreadySynced = alreadySynced;
             this.success = success;
+            this.syncing = syncing;
             this.message = message;
             this.errorDetail = errorDetail;
             this.updatedBoardCount = updatedBoardCount;
@@ -84,6 +92,10 @@ public interface PanelProcessSyncService {
 
         public static SyncResult alreadySynced() {
             return new SyncResult(true, true, "该批次已同步过", null, 0);
+        }
+
+        public static SyncResult syncing() {
+            return new SyncResult(false, false, true, "正在同步数据中", null, 0);
         }
 
         public static SyncResult success(String message, int updatedBoardCount) {
@@ -101,6 +113,7 @@ public interface PanelProcessSyncService {
 
         public boolean isAlreadySynced() { return alreadySynced; }
         public boolean isSuccess() { return success; }
+        public boolean isSyncing() { return syncing; }
         public String getMessage() { return message; }
         public String getErrorDetail() { return errorDetail; }
         public int getUpdatedBoardCount() { return updatedBoardCount; }

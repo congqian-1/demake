@@ -37,12 +37,16 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.io.IOException;
 import java.util.Collections;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -69,6 +73,8 @@ class PanelProcessSyncResyncTest {
     @BeforeEach
     void setUp() {
         ReflectionTestUtils.setField(service, "syncEnabled", true);
+        lenient().when(panelProcessSyncMapper.updateBatchResult(anyString(), anyString(),
+                nullable(String.class), anyString())).thenReturn(1);
     }
 
     @Test
@@ -118,8 +124,7 @@ class PanelProcessSyncResyncTest {
         SyncResult result = service.resyncBatchProcess(BATCH_NUM);
 
         assertFalse(result.isSuccess());
-        assertTrue(result.getErrorDetail().contains("status=FAILED"));
-        assertTrue(result.getErrorDetail().contains("第三方接口返回空数据"));
+        assertEquals("成功 0/1，失败 1，详见工单级记录", result.getErrorDetail());
         verify(panelProcessSyncMapper).updateResult(eq(BATCH_NUM), eq(WORK_ID),
                 eq("FAILED"), contains("第三方接口返回空数据"));
     }
