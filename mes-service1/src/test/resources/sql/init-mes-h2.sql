@@ -204,6 +204,7 @@ CREATE TABLE IF NOT EXISTS mes_part (
     order_number VARCHAR(128),
     sealing_flat_noodles VARCHAR(128),
     texture VARCHAR(128),
+    little_color VARCHAR(128),
     container_number VARCHAR(128),
     set_number VARCHAR(128),
     groove VARCHAR(128),

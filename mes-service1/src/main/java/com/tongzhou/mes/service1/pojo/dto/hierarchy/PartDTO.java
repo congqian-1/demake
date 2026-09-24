@@ -80,6 +80,8 @@ public class PartDTO {
     private String sealingFlatNoodles;
     @Schema(description = "纹理")
     private String texture;
+    @Schema(description = "小花色")
+    private String littleColor;
     @Schema(description = "柜号")
     private String containerNumber;
     @Schema(description = "套号")

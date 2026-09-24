@@ -447,6 +447,7 @@ class MesIntegrationSpecTest {
         assertNotNull(board.getOrderNumber());
         assertNotNull(board.getSealingFlatNoodles());
         assertNotNull(board.getTexture());
+        assertNotNull(board.getLittleColor());
         assertNotNull(board.getContainerNumber());
         assertNotNull(board.getSetNumber());
         assertNotNull(board.getGroove());
@@ -464,6 +465,7 @@ class MesIntegrationSpecTest {
         assertEquals("ORDER-NO-A", boards.get(0).getOrderNumber());
         assertEquals("SEAL-A", boards.get(0).getSealingFlatNoodles());
         assertEquals("TEXTURE-A", boards.get(0).getTexture());
+        assertEquals("LITTLE-COLOR-A", boards.get(0).getLittleColor());
         assertEquals("CONTAINER-A", boards.get(0).getContainerNumber());
         assertEquals("SET-A", boards.get(0).getSetNumber());
         assertEquals("GROOVE-A", boards.get(0).getGroove());
@@ -628,6 +630,7 @@ class MesIntegrationSpecTest {
         partInfo.put("processCode", "ZN-25H");
         partInfo.put("orderNumber", "Z-2");
         partInfo.put("texture", "1");
+        partInfo.put("littleColor", 1);
         partInfo.put("setNumber", 1001);
         partInfo.put("containerNumber", 4);
         partInfo.put("sealingFlatNoodles", "云慕灰橡PVC封边条1.2*29mm-定制");
@@ -644,6 +647,7 @@ class MesIntegrationSpecTest {
 
         assertEquals("Z-2", mappedPart.getOrderNumber());
         assertEquals("1", mappedPart.getTexture());
+        assertEquals("1", mappedPart.getLittleColor());
         assertEquals("1001", mappedPart.getSetNumber());
         assertEquals("4", mappedPart.getContainerNumber());
         assertEquals("云慕灰橡PVC封边条1.2*29mm-定制", mappedPart.getSealingFlatNoodles());
@@ -665,6 +669,7 @@ class MesIntegrationSpecTest {
         assertNotNull(saved);
         assertEquals("Z-2", saved.getOrderNumber());
         assertEquals("1", saved.getTexture());
+        assertEquals("1", saved.getLittleColor());
         assertEquals("1001", saved.getSetNumber());
         assertEquals("4", saved.getContainerNumber());
         assertEquals("云慕灰橡PVC封边条1.2*29mm-定制", saved.getSealingFlatNoodles());
@@ -715,6 +720,7 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].orderNumber").value("ORDER-NO-A"))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].sealingFlatNoodles").value("SEAL-A"))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].texture").value("TEXTURE-A"))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].littleColor").value("LITTLE-COLOR-A"))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].containerNumber").value("CONTAINER-A"))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].setNumber").value("SET-A"))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].groove").value("GROOVE-A"));
@@ -730,6 +736,7 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].orderNumber").value("ORDER-NO-A"))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].sealingFlatNoodles").value("SEAL-A"))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].texture").value("TEXTURE-A"))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].littleColor").value("LITTLE-COLOR-A"))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].containerNumber").value("CONTAINER-A"))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].setNumber").value("SET-A"))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].groove").value("GROOVE-A"));
@@ -746,6 +753,7 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.orderNumber").value("ORDER-NO-A"))
             .andExpect(jsonPath("$.sealingFlatNoodles").value("SEAL-A"))
             .andExpect(jsonPath("$.texture").value("TEXTURE-A"))
+            .andExpect(jsonPath("$.littleColor").value("LITTLE-COLOR-A"))
             .andExpect(jsonPath("$.containerNumber").value("CONTAINER-A"))
             .andExpect(jsonPath("$.setNumber").value("SET-A"))
             .andExpect(jsonPath("$.groove").value("GROOVE-A"));
