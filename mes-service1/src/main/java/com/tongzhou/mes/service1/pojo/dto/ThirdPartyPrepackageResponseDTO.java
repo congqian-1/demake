@@ -128,6 +128,8 @@ public class ThirdPartyPrepackageResponseDTO {
         private String sealingFlatNoodles;
         @JsonAlias({"Texture"})
         private String texture;
+        @JsonAlias({"LittleColor", "little_color"})
+        private String littleColor;
         @JsonAlias({"ContainerNumber"})
         private String containerNumber;
         @JsonAlias({"SetNumber"})
@@ -152,6 +154,10 @@ public class ThirdPartyPrepackageResponseDTO {
 
         public void setTexture(Object texture) {
             this.texture = asString(texture);
+        }
+
+        public void setLittleColor(Object littleColor) {
+            this.littleColor = asString(littleColor);
         }
 
         public void setContainerNumber(Object containerNumber) {

@@ -263,6 +263,10 @@ public class PrepackageDataDTO {
         @JsonAlias({"texture"})
         private String texture; // 纹理
 
+        @JsonProperty("LittleColor")
+        @JsonAlias({"littleColor", "little_color"})
+        private String littleColor; // 小花色
+
         @JsonProperty("ContainerNumber")
         @JsonAlias({"containerNumber"})
         private String containerNumber; // 柜号
@@ -293,6 +297,10 @@ public class PrepackageDataDTO {
 
         public void setTexture(Object texture) {
             this.texture = asString(texture);
+        }
+
+        public void setLittleColor(Object littleColor) {
+            this.littleColor = asString(littleColor);
         }
 
         public void setContainerNumber(Object containerNumber) {

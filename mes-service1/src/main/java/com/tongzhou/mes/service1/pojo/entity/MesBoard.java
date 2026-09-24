@@ -164,6 +164,11 @@ public class MesBoard {
     private String texture;
 
     /**
+     * 小花色
+     */
+    private String littleColor;
+
+    /**
      * 柜号
      */
     private String containerNumber;

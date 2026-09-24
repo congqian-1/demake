@@ -181,6 +181,7 @@ create table if not exists mes.mes_part
     order_number  varchar(128)                       null comment '分单号',
     sealing_flat_noodles varchar(128)                null comment '封板条',
     texture       varchar(128)                       null comment '纹理',
+    little_color  varchar(128)                       null comment '小花色',
     container_number varchar(128)                    null comment '柜号',
     set_number    varchar(128)                       null comment '套号',
     groove        varchar(128)                       null comment '槽',

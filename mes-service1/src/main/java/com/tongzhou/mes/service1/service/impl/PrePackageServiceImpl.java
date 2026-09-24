@@ -706,6 +706,7 @@ public class PrePackageServiceImpl implements PrePackageService {
                                 board.setOrderNumber(partInfo.getOrderNumber());
                                 board.setSealingFlatNoodles(partInfo.getSealingFlatNoodles());
                                 board.setTexture(partInfo.getTexture());
+                                board.setLittleColor(partInfo.getLittleColor());
                                 board.setContainerNumber(partInfo.getContainerNumber());
                                 board.setSetNumber(partInfo.getSetNumber());
                                 board.setGroove(partInfo.getGroove());

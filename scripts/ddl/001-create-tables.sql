@@ -186,6 +186,7 @@ CREATE TABLE `mes_part` (
 	  `order_number` VARCHAR(128) DEFAULT NULL COMMENT '分单号',
 	  `sealing_flat_noodles` VARCHAR(128) DEFAULT NULL COMMENT '封板条',
 	  `texture` VARCHAR(128) DEFAULT NULL COMMENT '纹理',
+	  `little_color` VARCHAR(128) DEFAULT NULL COMMENT '小花色',
 	  `container_number` VARCHAR(128) DEFAULT NULL COMMENT '柜号',
 	  `set_number` VARCHAR(128) DEFAULT NULL COMMENT '套号',
 	  `groove` VARCHAR(128) DEFAULT NULL COMMENT '槽',
