@@ -479,6 +479,7 @@ public class BatchPackagingQueryServiceImpl implements BatchPackagingQueryServic
         dto.setSetNumber(part.getSetNumber());
         dto.setGroove(part.getGroove());
         dto.setFjYph(part.getFjYph());
+        dto.setFpcjhfbjm(part.getFpcjhfbjm());
         dto.setStandardList(part.getStandardList());
         dto.setRealPackageNo(part.getRealPackageNo());
         dto.setIsDeleted(part.getIsDeleted());

@@ -208,6 +208,7 @@ CREATE TABLE IF NOT EXISTS mes_part (
     container_number VARCHAR(128),
     set_number VARCHAR(128),
     groove VARCHAR(128),
+    fpcjhfbjm VARCHAR(128),
     real_package_no VARCHAR(100),
     is_deleted TINYINT DEFAULT 0,
     created_by VARCHAR(100),

@@ -185,6 +185,7 @@ create table if not exists mes.mes_part
     container_number varchar(128)                    null comment '柜号',
     set_number    varchar(128)                       null comment '套号',
     groove        varchar(128)                       null comment '槽',
+    fpcjhfbjm     varchar(128)                       null comment '第三方 MES 板件字段 FPCJHFBJM',
     real_package_no varchar(100)                     null comment '真实打包包号',
     is_deleted    tinyint  default 0                 null comment '删除标识（0=正常，1=已删除/关联板件已失效）',
     created_by    varchar(100)                       null comment '创建人',

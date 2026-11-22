@@ -189,6 +189,11 @@ public class MesBoard {
     private String fjYph;
 
     /**
+     * 第三方 MES 预包装板件字段，旧版数据允许为空。
+     */
+    private String fpcjhfbjm;
+
+    /**
      * 真实打包包号
      */
     private String realPackageNo;

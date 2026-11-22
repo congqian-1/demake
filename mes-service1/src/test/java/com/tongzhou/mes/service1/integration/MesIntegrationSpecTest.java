@@ -61,6 +61,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 
+import static org.hamcrest.Matchers.hasItems;
+import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -631,6 +633,7 @@ class MesIntegrationSpecTest {
         partInfo.put("orderNumber", "Z-2");
         partInfo.put("texture", "1");
         partInfo.put("littleColor", 1);
+        partInfo.put("FPCJHFBJM", 1203);
         partInfo.put("setNumber", 1001);
         partInfo.put("containerNumber", 4);
         partInfo.put("sealingFlatNoodles", "云慕灰橡PVC封边条1.2*29mm-定制");
@@ -670,11 +673,67 @@ class MesIntegrationSpecTest {
         assertEquals("Z-2", saved.getOrderNumber());
         assertEquals("1", saved.getTexture());
         assertEquals("1", saved.getLittleColor());
+        assertEquals("1203", jdbcTemplate.queryForObject(
+            "SELECT fpcjhfbjm FROM mes_part WHERE part_code = ?", String.class, partCode));
         assertEquals("1001", saved.getSetNumber());
         assertEquals("4", saved.getContainerNumber());
         assertEquals("云慕灰橡PVC封边条1.2*29mm-定制", saved.getSealingFlatNoodles());
         assertTrue(saved.getWorkmanship() == null);
         assertTrue(saved.getGroove() == null);
+    }
+
+    @Test
+    void thirdPartyRepeatedPackage_shouldSaveOnePackageAndReturnAllTwentyParts() throws Exception {
+        String batchNum = unique("MERGE-BATCH");
+        String workId = unique("MERGE-WORK");
+        String partPrefix = unique("MERGE-PART");
+        ObjectNode root = objectMapper.createObjectNode();
+        root.put("code", 0);
+        ObjectNode item = root.putArray("data").addObject();
+        item.put("workNum", workId);
+        ArrayNode segments = item.putArray("prePackageInfo");
+        for (int segment = 0; segment < 2; segment++) {
+            ObjectNode info = segments.addObject();
+            if (segment == 0) { info.put("boxCode", ""); }
+            else { info.putNull("boxCode"); }
+            ObjectNode pkg = info.putArray("boxInfoList").addObject();
+            pkg.put("packageNo", 0);
+            int count = segment == 0 ? 2 : 18;
+            pkg.put("partCount", count);
+            ArrayNode parts = pkg.putArray("partInfoList");
+            for (int i = 0; i < count; i++) {
+                parts.addObject()
+                    .put("partCode", partPrefix + "-" + segment + "-" + i)
+                    .put("FPCJHFBJM", "0007-" + segment);
+            }
+        }
+        PrepackageDataDTO mapped = new ThirdPartyPrepackageMapper().toPrepackageData(
+            objectMapper.treeToValue(root, ThirdPartyPrepackageResponseDTO.class), batchNum, workId);
+        pushBatch(batchNum, workId);
+        Mockito.doReturn(mapped).when(thirdPartyMesClient).getPrepackageInfo(batchNum, workId);
+        prePackagePullTask.pullPrePackageData();
+        assertEquals("PULLED", getWorkOrder(batchNum, workId).getPrepackageStatus());
+        List<MesPackage> packages = packageMapper.selectList(new LambdaQueryWrapper<MesPackage>()
+            .eq(MesPackage::getBatchNum, batchNum).eq(MesPackage::getWorkId, workId));
+        assertEquals(1, packages.size());
+        assertEquals(0, packages.get(0).getPackageNo());
+        assertEquals(20, packages.get(0).getPartCount());
+        List<MesBoard> boards = boardMapper.selectList(new LambdaQueryWrapper<MesBoard>()
+            .eq(MesBoard::getBatchNum, batchNum).eq(MesBoard::getWorkId, workId));
+        assertEquals(20, boards.size());
+        assertEquals(20L, boards.stream().map(MesBoard::getPartCode).distinct().count());
+        assertTrue(boards.stream().allMatch(board -> packages.get(0).getId().equals(board.getPackageId())));
+        assertEquals(2L, boards.stream().filter(board -> "0007-0".equals(board.getFpcjhfbjm())).count());
+        assertEquals(18L, boards.stream().filter(board -> "0007-1".equals(board.getFpcjhfbjm())).count());
+        for (String partCode : Arrays.asList(partPrefix + "-0-0", partPrefix + "-1-17")) {
+            mockMvc.perform(get("/api/v1/production/part/{partCode}/work-order-and-batch", partCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes.length()").value(1))
+                .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages.length()").value(1))
+                .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts.length()").value(20))
+                .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[*].FPCJHFBJM")
+                    .value(hasItems("0007-0", "0007-1")));
+        }
     }
 
     private void insertEmailConfig(String toAddress) {
@@ -721,6 +780,7 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].sealingFlatNoodles").value("SEAL-A"))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].texture").value("TEXTURE-A"))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].littleColor").value("LITTLE-COLOR-A"))
+            .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].FPCJHFBJM").value("0007-A"))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].containerNumber").value("CONTAINER-A"))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].setNumber").value("SET-A"))
             .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[0].groove").value("GROOVE-A"));
@@ -737,6 +797,7 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].sealingFlatNoodles").value("SEAL-A"))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].texture").value("TEXTURE-A"))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].littleColor").value("LITTLE-COLOR-A"))
+            .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].FPCJHFBJM").value("0007-A"))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].containerNumber").value("CONTAINER-A"))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].setNumber").value("SET-A"))
             .andExpect(jsonPath("$.data.prepackageOrder.boxes[0].packages[0].parts[0].groove").value("GROOVE-A"));
@@ -754,9 +815,15 @@ class MesIntegrationSpecTest {
             .andExpect(jsonPath("$.sealingFlatNoodles").value("SEAL-A"))
             .andExpect(jsonPath("$.texture").value("TEXTURE-A"))
             .andExpect(jsonPath("$.littleColor").value("LITTLE-COLOR-A"))
+            .andExpect(jsonPath("$.FPCJHFBJM").value("0007-A"))
             .andExpect(jsonPath("$.containerNumber").value("CONTAINER-A"))
             .andExpect(jsonPath("$.setNumber").value("SET-A"))
             .andExpect(jsonPath("$.groove").value("GROOVE-A"));
+
+        String partWithoutField = batchNum + "-" + workId + "-PART-2";
+        mockMvc.perform(get("/api/v1/production/part/{partCode}/detail", partWithoutField))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.FPCJHFBJM").value(nullValue()));
 
         // 批次同步中时拒绝层级查询，并返回明确提示。
         panelProcessSyncMapper.updateResult(batchNum, "__BATCH__", "PROCESSING", null);
@@ -879,6 +946,7 @@ class MesIntegrationSpecTest {
         repullDto.getPrePackageInfo().setFdd8("FDD8-REFRESH");
         repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(0).setRotate("9");
         repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(0).setProcessCode("PROC-REFRESH-1");
+        repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(0).setFpcjhfbjm("0008-A");
         repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(1).setRotate("8");
         repullDto.getPrePackageInfo().getBoxInfoDetails().get(0).getPackageInfos().get(0).getPartInfos().get(1).setProcessCode("PROC-REFRESH-2");
         Mockito.doReturn(repullDto)
@@ -914,6 +982,7 @@ class MesIntegrationSpecTest {
         assertNotNull(refreshedBoard);
         assertEquals("9", refreshedBoard.getRotate());
         assertEquals("PROC-REFRESH-1", refreshedBoard.getProcessCode());
+        assertEquals("0008-A", refreshedBoard.getFpcjhfbjm());
 
         com.tongzhou.mes.service1.pojo.entity.MesPrepackageOrder refreshedOrder =
             prepackageOrderMapper.selectOne(

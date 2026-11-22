@@ -17,6 +17,7 @@
 
 package com.tongzhou.mes.service1.pojo.dto.hierarchy;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -90,6 +91,9 @@ public class PartDTO {
     private String groove;
     @Schema(description = "初始简易批次号（FJYPH）")
     private String fjYph;
+    @JsonProperty("FPCJHFBJM")
+    @Schema(description = "第三方 MES 板件字段 FPCJHFBJM")
+    private String fpcjhfbjm;
     @Schema(description = "标准码原始JSON")
     private String standardList;
     @Schema(description = "真实打包包号", example = "PKG-REAL-001")

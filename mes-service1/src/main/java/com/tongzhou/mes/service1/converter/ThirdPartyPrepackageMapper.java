@@ -48,6 +48,7 @@ public class ThirdPartyPrepackageMapper {
         }
 
         java.util.Map<String, PrepackageDataDTO.BoxInfoDetail> boxByCode = new java.util.LinkedHashMap<>();
+        java.util.Map<String, java.util.Map<Integer, PrepackageDataDTO.PackageInfo>> packagesByBox = new java.util.HashMap<>();
         for (ThirdPartyPrepackageResponseDTO.PrePackageInfoItem infoItem : target.getPrePackageInfo()) {
             if (infoItem.getBoxInfoList() == null || infoItem.getBoxInfoList().isEmpty()) {
                 continue;
@@ -70,8 +71,21 @@ public class ThirdPartyPrepackageMapper {
                     boxDetail.setPackageInfos(new ArrayList<>());
                     boxByCode.put(boxCode, boxDetail);
                 }
-                List<PrepackageDataDTO.PackageInfo> packages = boxDetail.getPackageInfos();
-                packages.addAll(buildPackages(boxInfoItem));
+                java.util.Map<Integer, PrepackageDataDTO.PackageInfo> packageByNo =
+                    packagesByBox.computeIfAbsent(boxCode, key -> new java.util.HashMap<>());
+                for (PrepackageDataDTO.PackageInfo incoming : buildPackages(boxInfoItem)) {
+                    PrepackageDataDTO.PackageInfo existing = packageByNo.get(incoming.getPackageNo());
+                    if (existing == null) {
+                        packageByNo.put(incoming.getPackageNo(), incoming);
+                        boxDetail.getPackageInfos().add(incoming);
+                    } else {
+                        // 同箱码同包号视为一个包，保留首段包属性及所有板件，重复板件仍由保存校验处理。
+                        existing.getPartInfos().addAll(incoming.getPartInfos());
+                        existing.setPartCount(existing.getPartInfos().size());
+                        log.warn("第三方重复包合并 batchNum={}, workId={}, boxCode={}, packageNo={}, mergedPartCount={}",
+                            batchNum, workId, boxCode, incoming.getPackageNo(), existing.getPartCount());
+                    }
+                }
             }
         }
 
@@ -184,6 +198,7 @@ public class ThirdPartyPrepackageMapper {
             dto.setSetNumber(part.getSetNumber());
             dto.setGroove(part.getGroove());
             dto.setFjYph(part.getFjYph());
+            dto.setFpcjhfbjm(part.getFpcjhfbjm());
             dto.setStandardListJson(null);
             parts.add(dto);
         }
