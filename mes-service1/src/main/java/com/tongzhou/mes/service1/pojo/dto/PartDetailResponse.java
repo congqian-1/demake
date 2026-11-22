@@ -125,6 +125,10 @@ public class PartDetailResponse {
 
     private String fjYph;
 
+    @JsonProperty("FPCJHFBJM")
+    @Schema(description = "第三方 MES 板件字段 FPCJHFBJM")
+    private String fpcjhfbjm;
+
     @Schema(description = "标准码列表（解析后的Map列表）")
     private List<Map<String, Integer>> standardList;
 

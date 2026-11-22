@@ -280,6 +280,10 @@ public class PrepackageDataDTO {
         private String groove; // 槽
         private String fjYph;
 
+        @JsonProperty("FPCJHFBJM")
+        @JsonAlias("fpcjhfbjm")
+        private String fpcjhfbjm;
+
         @JsonProperty("StandardList")
         private String standardListJson; // 标准码集合（JSON格式）
 

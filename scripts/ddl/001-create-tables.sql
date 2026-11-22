@@ -190,6 +190,7 @@ CREATE TABLE `mes_part` (
 	  `container_number` VARCHAR(128) DEFAULT NULL COMMENT '柜号',
 	  `set_number` VARCHAR(128) DEFAULT NULL COMMENT '套号',
 	  `groove` VARCHAR(128) DEFAULT NULL COMMENT '槽',
+	  `fpcjhfbjm` VARCHAR(128) DEFAULT NULL COMMENT '第三方 MES 板件字段 FPCJHFBJM',
 	  `is_deleted` TINYINT DEFAULT 0 COMMENT '删除标识（0=正常，1=已删除/关联板件已失效）',
   `created_by` VARCHAR(100) DEFAULT NULL COMMENT '创建人',
   `created_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
