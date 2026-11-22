@@ -61,6 +61,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ScheduledFuture;
 
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.nullValue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -679,6 +680,60 @@ class MesIntegrationSpecTest {
         assertEquals("云慕灰橡PVC封边条1.2*29mm-定制", saved.getSealingFlatNoodles());
         assertTrue(saved.getWorkmanship() == null);
         assertTrue(saved.getGroove() == null);
+    }
+
+    @Test
+    void thirdPartyRepeatedPackage_shouldSaveOnePackageAndReturnAllTwentyParts() throws Exception {
+        String batchNum = unique("MERGE-BATCH");
+        String workId = unique("MERGE-WORK");
+        String partPrefix = unique("MERGE-PART");
+        ObjectNode root = objectMapper.createObjectNode();
+        root.put("code", 0);
+        ObjectNode item = root.putArray("data").addObject();
+        item.put("workNum", workId);
+        ArrayNode segments = item.putArray("prePackageInfo");
+        for (int segment = 0; segment < 2; segment++) {
+            ObjectNode info = segments.addObject();
+            if (segment == 0) { info.put("boxCode", ""); }
+            else { info.putNull("boxCode"); }
+            ObjectNode pkg = info.putArray("boxInfoList").addObject();
+            pkg.put("packageNo", 0);
+            int count = segment == 0 ? 2 : 18;
+            pkg.put("partCount", count);
+            ArrayNode parts = pkg.putArray("partInfoList");
+            for (int i = 0; i < count; i++) {
+                parts.addObject()
+                    .put("partCode", partPrefix + "-" + segment + "-" + i)
+                    .put("FPCJHFBJM", "0007-" + segment);
+            }
+        }
+        PrepackageDataDTO mapped = new ThirdPartyPrepackageMapper().toPrepackageData(
+            objectMapper.treeToValue(root, ThirdPartyPrepackageResponseDTO.class), batchNum, workId);
+        pushBatch(batchNum, workId);
+        Mockito.doReturn(mapped).when(thirdPartyMesClient).getPrepackageInfo(batchNum, workId);
+        prePackagePullTask.pullPrePackageData();
+        assertEquals("PULLED", getWorkOrder(batchNum, workId).getPrepackageStatus());
+        List<MesPackage> packages = packageMapper.selectList(new LambdaQueryWrapper<MesPackage>()
+            .eq(MesPackage::getBatchNum, batchNum).eq(MesPackage::getWorkId, workId));
+        assertEquals(1, packages.size());
+        assertEquals(0, packages.get(0).getPackageNo());
+        assertEquals(20, packages.get(0).getPartCount());
+        List<MesBoard> boards = boardMapper.selectList(new LambdaQueryWrapper<MesBoard>()
+            .eq(MesBoard::getBatchNum, batchNum).eq(MesBoard::getWorkId, workId));
+        assertEquals(20, boards.size());
+        assertEquals(20L, boards.stream().map(MesBoard::getPartCode).distinct().count());
+        assertTrue(boards.stream().allMatch(board -> packages.get(0).getId().equals(board.getPackageId())));
+        assertEquals(2L, boards.stream().filter(board -> "0007-0".equals(board.getFpcjhfbjm())).count());
+        assertEquals(18L, boards.stream().filter(board -> "0007-1".equals(board.getFpcjhfbjm())).count());
+        for (String partCode : Arrays.asList(partPrefix + "-0-0", partPrefix + "-1-17")) {
+            mockMvc.perform(get("/api/v1/production/part/{partCode}/work-order-and-batch", partCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes.length()").value(1))
+                .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages.length()").value(1))
+                .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts.length()").value(20))
+                .andExpect(jsonPath("$.data.optimizingFiles[0].workOrders[0].prepackageOrder.boxes[0].packages[0].parts[*].FPCJHFBJM")
+                    .value(hasItems("0007-0", "0007-1")));
+        }
     }
 
     private void insertEmailConfig(String toAddress) {
